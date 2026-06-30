@@ -1,0 +1,291 @@
+indicators:
+  # ── 국내 주가지수 ────────────────────────────────
+  kospi200:
+    enabled: true
+    display_name: "KOSPI 200"
+    provider: yfinance
+    symbol: "^KS200"
+    unit: "pt"
+    category: equity_index
+    trend_window: 20
+
+  kosdaq150:
+    enabled: true
+    display_name: "KOSDAQ 150"
+    provider: yfinance
+    symbol: "^KDAQ"
+    unit: "pt"
+    category: equity_index
+    trend_window: 20
+
+  # ── 미국 주가지수 ────────────────────────────────
+  sp500:
+    enabled: true
+    display_name: "S&P 500"
+    provider: yfinance
+    symbol: "^GSPC"
+    unit: "pt"
+    category: equity_index
+    trend_window: 20
+
+  nasdaq100:
+    enabled: true
+    display_name: "NASDAQ 100"
+    provider: yfinance
+    symbol: "^NDX"
+    unit: "pt"
+    category: equity_index
+    trend_window: 20
+
+  # ── 중국·유럽 주가지수 ───────────────────────────
+  csi300:
+    enabled: true
+    display_name: "CSI 300 (중국)"
+    provider: yfinance
+    symbol: "000300.SS"
+    unit: "pt"
+    category: equity_index
+    trend_window: 20
+
+  euro_stoxx50:
+    enabled: true
+    display_name: "EuroStoxx 50"
+    provider: yfinance
+    symbol: "^STOXX50E"
+    unit: "pt"
+    category: equity_index
+    trend_window: 20
+
+  nikkei225:
+    enabled: true
+    display_name: "Nikkei 225 (일본)"
+    provider: yfinance
+    symbol: "^N225"
+    unit: "pt"
+    category: equity_index
+    trend_window: 20
+
+  # ── 반도체 ETF ──────────────────────────────────
+  soxx:
+    enabled: true
+    display_name: "반도체 ETF (SOXX)"
+    provider: yfinance
+    symbol: "SOXX"
+    unit: "USD"
+    category: etf
+    trend_window: 20
+
+  smh:
+    enabled: true
+    display_name: "반도체 ETF (SMH)"
+    provider: yfinance
+    symbol: "SMH"
+    unit: "USD"
+    category: etf
+    trend_window: 20
+
+  # ── 암호화폐 ────────────────────────────────────
+  bitcoin:
+    enabled: true
+    display_name: "비트코인 (BTC)"
+    provider: coingecko
+    symbol: "bitcoin"
+    unit: "USD"
+    category: crypto
+    trend_window: 14
+
+  ethereum:
+    enabled: true
+    display_name: "이더리움 (ETH)"
+    provider: coingecko
+    symbol: "ethereum"
+    unit: "USD"
+    category: crypto
+    trend_window: 14
+
+  # ── 원자재 ──────────────────────────────────────
+  gold:
+    enabled: true
+    display_name: "금 (Gold)"
+    provider: yfinance
+    symbol: "GC=F"
+    unit: "USD/oz"
+    category: commodity
+    trend_window: 20
+
+  crude_oil:
+    enabled: true
+    display_name: "원유 (WTI Crude)"
+    provider: yfinance
+    symbol: "CL=F"
+    unit: "USD/bbl"
+    category: commodity
+    trend_window: 20
+
+  # ── 변동성 ──────────────────────────────────────
+  vix:
+    enabled: true
+    display_name: "VIX (공포지수)"
+    provider: yfinance
+    symbol: "^VIX"
+    unit: ""
+    category: volatility
+    trend_window: 20
+
+  # ── 환율 ────────────────────────────────────────
+  usdkrw:
+    enabled: true
+    display_name: "USD/KRW"
+    provider: yfinance
+    symbol: "KRW=X"
+    unit: "KRW"
+    category: fx
+    trend_window: 20
+
+  usdjpy:
+    enabled: true
+    display_name: "USD/JPY"
+    provider: yfinance
+    symbol: "JPY=X"
+    unit: "JPY"
+    category: fx
+    trend_window: 20
+
+  usdcny:
+    enabled: true
+    display_name: "USD/CNY"
+    provider: yfinance
+    symbol: "CNY=X"
+    unit: "CNY"
+    category: fx
+    trend_window: 20
+
+  eurusd:
+    enabled: true
+    display_name: "EUR/USD"
+    provider: yfinance
+    symbol: "EURUSD=X"
+    unit: "USD"
+    category: fx
+    trend_window: 20
+
+  # ── 금리 (FRED) ─────────────────────────────────
+  us_10y_rate:
+    enabled: true
+    display_name: "미국 10년 국채금리"
+    provider: fred
+    symbol: "DGS10"
+    unit: "%"
+    category: rate
+    trend_window: 20
+
+  us_2y_rate:
+    enabled: true
+    display_name: "미국 2년 국채금리"
+    provider: fred
+    symbol: "DGS2"
+    unit: "%"
+    category: rate
+    trend_window: 20
+
+  us_fed_rate:
+    enabled: true
+    display_name: "미국 기준금리 (FF Rate)"
+    provider: fred
+    symbol: "FEDFUNDS"
+    unit: "%"
+    category: rate
+    trend_window: 20
+
+  jp_10y_rate:
+    enabled: true
+    display_name: "일본 10년 국채금리"
+    provider: fred
+    symbol: "IRLTLT01JPM156N"
+    unit: "%"
+    category: rate
+    trend_window: 20
+
+  eu_10y_rate:
+    enabled: true
+    display_name: "유럽 10년 국채금리 (독일)"
+    provider: fred
+    symbol: "IRLTLT01DEM156N"
+    unit: "%"
+    category: rate
+    trend_window: 20
+
+  # ── 미국 거시지표 (FRED) ─────────────────────────
+  us_cpi:
+    enabled: true
+    display_name: "미국 CPI (소비자물가)"
+    provider: fred
+    symbol: "CPIAUCSL"
+    unit: "index"
+    category: macro
+    trend_window: 6
+
+  us_unemployment:
+    enabled: true
+    display_name: "미국 실업률"
+    provider: fred
+    symbol: "UNRATE"
+    unit: "%"
+    category: macro
+    trend_window: 6
+
+  us_gdp:
+    enabled: true
+    display_name: "미국 GDP (실질)"
+    provider: fred
+    symbol: "GDPC1"
+    unit: "bn USD"
+    category: macro
+    trend_window: 4
+
+  us_household_debt:
+    enabled: true
+    display_name: "미국 가계부채 비율"
+    provider: fred
+    symbol: "TDSP"
+    unit: "%"
+    category: macro
+    trend_window: 4
+
+  us_corp_debt:
+    enabled: true
+    display_name: "미국 기업부채 (GDP 대비)"
+    provider: fred
+    symbol: "BCNSDODNS"
+    unit: "bn USD"
+    category: macro
+    trend_window: 4
+
+  us_m2:
+    enabled: true
+    display_name: "미국 M2 통화량"
+    provider: fred
+    symbol: "M2SL"
+    unit: "bn USD"
+    category: macro
+    trend_window: 6
+
+  # ── 한국 금리 (ECOS 한국은행) ───────────────────
+  kr_base_rate:
+    enabled: true
+    display_name: "한국 기준금리"
+    provider: ecos
+    symbol: "722Y001/0101000"
+    unit: "%"
+    category: rate
+    trend_window: 12
+
+  # ── 국부펀드 포트폴리오 ──────────────────────────
+  nps_portfolio:
+    enabled: true
+    display_name: "국민연금 포트폴리오"
+    provider: portfolio
+    symbol: "nps"
+    unit: "%"
+    category: fund
+    trend_window: 4

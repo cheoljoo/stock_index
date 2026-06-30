@@ -1,0 +1,23 @@
+[Unit]
+Description=Stock Index Dashboard (Streamlit)
+After=network.target
+
+[Service]
+Type=simple
+User=cheoljoo
+WorkingDirectory=/home/cheoljoo/code/stock_index
+ExecStart=/home/cheoljoo/code/stock_index/.venv/bin/streamlit run \
+    src/stockindex/dashboard/app.py \
+    --server.address 0.0.0.0 \
+    --server.port 8501 \
+    --server.headless true \
+    --server.baseUrlPath /stock_index \
+    --browser.gatherUsageStats false
+Restart=always
+RestartSec=5
+EnvironmentFile=-/home/cheoljoo/code/stock_index/.env
+StandardOutput=append:/home/cheoljoo/code/stock_index/logs/dashboard.log
+StandardError=append:/home/cheoljoo/code/stock_index/logs/dashboard.log
+
+[Install]
+WantedBy=multi-user.target

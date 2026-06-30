@@ -1,0 +1,52 @@
+groups:
+  korea_market:
+    display_name: "한국 시장"
+    members: [kospi200, kosdaq150, usdkrw, kr_base_rate]
+
+  global_equity:
+    display_name: "글로벌 주가지수"
+    members: [sp500, nasdaq100, csi300, euro_stoxx50, nikkei225, kospi200]
+
+  us_market:
+    display_name: "미국 시장"
+    members: [sp500, nasdaq100, us_10y_rate, us_2y_rate, vix, us_fed_rate]
+
+  asia_market:
+    display_name: "아시아 시장"
+    members: [kospi200, kosdaq150, nikkei225, csi300, usdkrw, usdjpy, usdcny]
+
+  safe_haven:
+    display_name: "안전자산"
+    members: [gold, vix, us_10y_rate, us_fed_rate]
+
+  risk_assets:
+    display_name: "위험자산"
+    members: [bitcoin, ethereum, soxx, smh, nasdaq100]
+
+  commodities:
+    display_name: "원자재"
+    members: [gold, crude_oil]
+
+  crypto:
+    display_name: "암호화폐"
+    members: [bitcoin, ethereum]
+
+  fx_majors:
+    display_name: "주요 환율"
+    members: [usdkrw, usdjpy, usdcny, eurusd]
+
+  rates:
+    display_name: "글로벌 금리"
+    members: [us_fed_rate, us_2y_rate, us_10y_rate, jp_10y_rate, eu_10y_rate, kr_base_rate]
+
+  us_macro:
+    display_name: "미국 거시지표"
+    members: [us_cpi, us_unemployment, us_gdp, us_m2, us_household_debt]
+
+  semiconductor:
+    display_name: "반도체"
+    members: [soxx, smh, nasdaq100]
+
+  sovereign_funds:
+    display_name: "국부펀드"
+    members: [nps_portfolio]

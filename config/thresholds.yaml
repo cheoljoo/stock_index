@@ -1,0 +1,49 @@
+recipients:
+  default: ["cheoljoo@gmail.com"]
+  risk_team: ["cheoljoo@gmail.com"]
+
+thresholds:
+  vix:
+    - level: "주의"
+      condition: { op: ">=", value: 20 }
+      notify: default
+    - level: "경고"
+      condition: { op: ">=", value: 30 }
+      notify: [default, risk_team]
+    - level: "위험"
+      condition: { op: ">=", value: 40 }
+      notify: risk_team
+
+  usdkrw:
+    - level: "급등"
+      condition: { op: "pct_change", value: 2.0, window: 1 }
+      notify: default
+    - level: "고환율"
+      condition: { op: ">=", value: 1400 }
+      notify: default
+
+  bitcoin:
+    - level: "급락"
+      condition: { op: "pct_change", value: -10.0, window: 1 }
+      notify: default
+    - level: "급등"
+      condition: { op: "pct_change", value: 10.0, window: 1 }
+      notify: default
+
+  sp500:
+    - level: "급락"
+      condition: { op: "pct_change", value: -3.0, window: 1 }
+      notify: default
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  us_10y_rate:
+    - level: "고금리"
+      condition: { op: ">=", value: 5.0 }
+      notify: default
+
+  gold:
+    - level: "급등"
+      condition: { op: "pct_change", value: 3.0, window: 1 }
+      notify: default

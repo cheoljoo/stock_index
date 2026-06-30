@@ -1,0 +1,19 @@
+site_url: "http://localhost:8501"
+storage:
+  db_path: "data/meta.db"
+  parquet_dir: "data/series"
+smtp:
+  host: "smtp.gmail.com"
+  port: 587
+  user: "your-email@gmail.com"
+  password_env: "SMTP_PASSWORD"
+  from: "your-email@gmail.com"
+schedule:
+  run_time: "18:00"
+  tz: "Asia/Seoul"
+collect:
+  lookback_days: 365      # 최초 수집 시 과거 데이터 기간
+  retry_max: 3
+  retry_wait_seconds: 5
+alert:
+  suppress_duplicate_days: 1   # 동일 임계치 재발송 억제 일수

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stockindex"
+version = "0.1.0"
+description = "Daily stock index gathering & dashboard (open source)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "yfinance>=0.2.40",
+    "pandas>=2.2",
+    "pyarrow>=16.0",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "requests>=2.32",
+    "numpy>=1.26",
+    "scipy>=1.13",
+    "streamlit>=1.36",
+    "plotly>=5.22",
+    "jinja2>=3.1",
+    "python-dotenv>=1.0",
+    "tenacity>=8.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-mock>=3.14"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stockindex"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
