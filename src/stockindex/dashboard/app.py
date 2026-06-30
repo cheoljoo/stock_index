@@ -24,7 +24,7 @@ TREND_LABELS: dict[TrendLabel, str] = {
     "volatile": "〰️ 울퉁불퉁",
 }
 
-st.set_page_config(page_title="주식 지표 대시보드", page_icon="📊", layout="wide")
+st.set_page_config(page_title="주식 지표 대시보드", page_icon="🧭", layout="wide")
 
 
 @st.cache_data(ttl=3600)
@@ -42,7 +42,7 @@ def main():
     dark = (st.get_option("theme.base") or "light") == "dark"
 
     # ── Sidebar ──────────────────────────────────────────────
-    st.sidebar.title("📊 주식 지표")
+    st.sidebar.title("🧭 주식 지표")
     st.sidebar.markdown("---")
 
     days_back = st.sidebar.slider("조회 기간 (일)", 30, 730, 365, step=30)
