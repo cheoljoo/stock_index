@@ -28,7 +28,7 @@ class EcosProvider(Provider):
         end_str = end.strftime("%Y%m")
         url = (
             f"{ECOS_BASE}/{api_key}/json/kr/1/100/"
-            f"{stat_code}/MM/{start_str}/{end_str}/{item_code}"
+            f"{stat_code}/M/{start_str}/{end_str}/{item_code}"
         )
         resp = requests.get(url, timeout=30)
         resp.raise_for_status()

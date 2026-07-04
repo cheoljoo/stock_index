@@ -11,9 +11,9 @@ indicators:
 
   kosdaq150:
     enabled: true
-    display_name: "KOSDAQ 150"
+    display_name: "KOSDAQ 종합"
     provider: yfinance
-    symbol: "^KDAQ"
+    symbol: "^KQ11"
     unit: "pt"
     category: equity_index
     trend_window: 20

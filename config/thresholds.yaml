@@ -1,8 +1,211 @@
 recipients:
-  default: ["cheoljoo@gmail.com"]
-  risk_team: ["cheoljoo@gmail.com"]
+  default:   ["cheoljoo@gmail.com"]
+  risk_team: ["cheoljoo@gmail.com"]   # 위험 수위 전용 그룹 (추후 별도 담당자 추가 가능)
+
+# ── 임계치 조건 연산자 ────────────────────────────────────────────────
+# op: ">=" | "<="      : 최신값이 value 이상/이하
+# op: "pct_change"     : window일 대비 등락률(%) — 양수=상승, 음수=하락
+#   급등/급락  : window=1 (단기 충격)
+#   강세장/약세장 : window=60 (중기 추세, 주가·ETF·코인·원자재)
+#   환율 강세/약세 : window=60, 기준 ±10%
+#   금리 급등/급락 : window=30, pct_change 기준 (절대값 변동이 작아 % 사용)
+# notify 없으면 메일 미발송 (DB 기록만 됨)
+# ──────────────────────────────────────────────────────────────────────
 
 thresholds:
+
+  # ── 주가지수 ─────────────────────────────────────────────────────────
+
+  kospi200:
+    - level: "급등"
+      condition: { op: "pct_change", value: 3.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -3.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 20.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  kosdaq150:
+    - level: "급등"
+      condition: { op: "pct_change", value: 4.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -4.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 20.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  sp500:
+    - level: "급등"
+      condition: { op: "pct_change", value: 3.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -3.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 20.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  nasdaq100:
+    - level: "급등"
+      condition: { op: "pct_change", value: 3.5,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -3.5,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 20.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  csi300:
+    - level: "급등"
+      condition: { op: "pct_change", value: 3.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -3.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 20.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  euro_stoxx50:
+    - level: "급등"
+      condition: { op: "pct_change", value: 3.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -3.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 20.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  nikkei225:
+    - level: "급등"
+      condition: { op: "pct_change", value: 3.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -3.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 20.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  # ── ETF ──────────────────────────────────────────────────────────────
+
+  soxx:
+    - level: "급등"
+      condition: { op: "pct_change", value: 4.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -4.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 20.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  smh:
+    - level: "급등"
+      condition: { op: "pct_change", value: 4.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -4.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 20.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  # ── 암호화폐 ─────────────────────────────────────────────────────────
+
+  bitcoin:
+    - level: "급등"
+      condition: { op: "pct_change", value: 10.0,  window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -10.0, window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 40.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -40.0, window: 60 }
+      notify: [default, risk_team]
+
+  ethereum:
+    - level: "급등"
+      condition: { op: "pct_change", value: 10.0,  window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -10.0, window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 40.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -40.0, window: 60 }
+      notify: [default, risk_team]
+
+  # ── 원자재 ───────────────────────────────────────────────────────────
+
+  gold:
+    - level: "급등"
+      condition: { op: "pct_change", value: 3.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -3.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 20.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -20.0, window: 60 }
+      notify: [default, risk_team]
+
+  crude_oil:
+    - level: "급등"
+      condition: { op: "pct_change", value: 5.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -5.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 30.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -30.0, window: 60 }
+      notify: [default, risk_team]
+
+  # ── 변동성 ───────────────────────────────────────────────────────────
+
   vix:
     - level: "주의"
       condition: { op: ">=", value: 20 }
@@ -13,37 +216,166 @@ thresholds:
     - level: "위험"
       condition: { op: ">=", value: 40 }
       notify: risk_team
+    - level: "급등"
+      condition: { op: "pct_change", value: 20.0,  window: 1 }
+      notify: [default, risk_team]
+    - level: "급락"
+      condition: { op: "pct_change", value: -20.0, window: 1 }
+      notify: default
+
+  # ── 환율 ─────────────────────────────────────────────────────────────
 
   usdkrw:
     - level: "급등"
-      condition: { op: "pct_change", value: 2.0, window: 1 }
+      condition: { op: "pct_change", value: 2.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -2.0,  window: 1 }
       notify: default
     - level: "고환율"
-      condition: { op: ">=", value: 1400 }
+      condition: { op: ">=", value: 1530 }
       notify: default
-
-  bitcoin:
-    - level: "급락"
-      condition: { op: "pct_change", value: -10.0, window: 1 }
-      notify: default
-    - level: "급등"
-      condition: { op: "pct_change", value: 10.0, window: 1 }
-      notify: default
-
-  sp500:
-    - level: "급락"
-      condition: { op: "pct_change", value: -3.0, window: 1 }
-      notify: default
-    - level: "약세장"
-      condition: { op: "pct_change", value: -20.0, window: 60 }
+    - level: "강세장"
+      condition: { op: "pct_change", value: 10.0,  window: 60 }
       notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -10.0, window: 60 }
+      notify: [default, risk_team]
+
+  usdjpy:
+    - level: "급등"
+      condition: { op: "pct_change", value: 2.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -2.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 10.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -10.0, window: 60 }
+      notify: [default, risk_team]
+
+  usdcny:
+    - level: "급등"
+      condition: { op: "pct_change", value: 1.0,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -1.0,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 5.0,   window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -5.0,  window: 60 }
+      notify: [default, risk_team]
+
+  eurusd:
+    - level: "급등"
+      condition: { op: "pct_change", value: 1.5,   window: 1 }
+      notify: default
+    - level: "급락"
+      condition: { op: "pct_change", value: -1.5,  window: 1 }
+      notify: default
+    - level: "강세장"
+      condition: { op: "pct_change", value: 10.0,  window: 60 }
+      notify: [default, risk_team]
+    - level: "약세장"
+      condition: { op: "pct_change", value: -10.0, window: 60 }
+      notify: [default, risk_team]
+
+  # ── 금리 (급등/급락 = 30일 기준 % 변화, 강세/약세장 개념 없음) ──────
 
   us_10y_rate:
     - level: "고금리"
       condition: { op: ">=", value: 5.0 }
       notify: default
-
-  gold:
+    - level: "저금리"
+      condition: { op: "<=", value: 2.0 }
+      notify: default
     - level: "급등"
-      condition: { op: "pct_change", value: 3.0, window: 1 }
+      condition: { op: "pct_change", value: 15.0,  window: 30 }
+      notify: [default, risk_team]
+    - level: "급락"
+      condition: { op: "pct_change", value: -15.0, window: 30 }
+      notify: [default, risk_team]
+
+  us_2y_rate:
+    - level: "고금리"
+      condition: { op: ">=", value: 5.0 }
+      notify: default
+    - level: "급등"
+      condition: { op: "pct_change", value: 15.0,  window: 30 }
+      notify: [default, risk_team]
+    - level: "급락"
+      condition: { op: "pct_change", value: -15.0, window: 30 }
+      notify: [default, risk_team]
+
+  us_fed_rate:
+    - level: "고금리"
+      condition: { op: ">=", value: 5.0 }
+      notify: default
+    - level: "급등"
+      condition: { op: "pct_change", value: 10.0,  window: 30 }
+      notify: [default, risk_team]
+    - level: "급락"
+      condition: { op: "pct_change", value: -10.0, window: 30 }
+      notify: [default, risk_team]
+
+  jp_10y_rate:
+    - level: "고금리"
+      condition: { op: ">=", value: 1.5 }
+      notify: default
+    - level: "급등"
+      condition: { op: "pct_change", value: 20.0,  window: 30 }
+      notify: [default, risk_team]
+    - level: "급락"
+      condition: { op: "pct_change", value: -20.0, window: 30 }
+      notify: [default, risk_team]
+
+  eu_10y_rate:
+    - level: "고금리"
+      condition: { op: ">=", value: 3.5 }
+      notify: default
+    - level: "급등"
+      condition: { op: "pct_change", value: 15.0,  window: 30 }
+      notify: [default, risk_team]
+    - level: "급락"
+      condition: { op: "pct_change", value: -15.0, window: 30 }
+      notify: [default, risk_team]
+
+  kr_base_rate:
+    - level: "고금리"
+      condition: { op: ">=", value: 3.5 }
+      notify: default
+    - level: "급등"
+      condition: { op: "pct_change", value: 10.0,  window: 30 }
+      notify: [default, risk_team]
+    - level: "급락"
+      condition: { op: "pct_change", value: -10.0, window: 30 }
+      notify: [default, risk_team]
+
+  # ── 거시지표 ─────────────────────────────────────────────────────────
+
+  us_cpi:
+    # CPI는 FRED 인덱스 절댓값 — pct_change(window=12)로 전년비 상승률 계산
+    - level: "급등"
+      condition: { op: "pct_change", value: 5.0,  window: 12 }
+      notify: [default, risk_team]
+    - level: "고물가"
+      condition: { op: "pct_change", value: 3.0,  window: 12 }
+      notify: default
+    - level: "저물가"
+      condition: { op: "pct_change", value: -1.0, window: 12 }
+      notify: default
+
+  us_unemployment:
+    - level: "급등"
+      condition: { op: "pct_change", value: 20.0,  window: 30 }
+      notify: [default, risk_team]
+    - level: "고실업"
+      condition: { op: ">=", value: 6.0 }
+      notify: [default, risk_team]
+    - level: "완전고용"
+      condition: { op: "<=", value: 3.5 }
       notify: default

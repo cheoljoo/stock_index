@@ -5,9 +5,9 @@ storage:
 smtp:
   host: "smtp.gmail.com"
   port: 587
-  user: "your-email@gmail.com"
+  user: "cheoljoo@gmail.com"
   password_env: "SMTP_PASSWORD"
-  from: "your-email@gmail.com"
+  from: "cheoljoo@gmail.com"
 schedule:
   run_time: "18:00"
   tz: "Asia/Seoul"

@@ -77,10 +77,23 @@ def main():
             format_func=lambda k: groups[k].display_name,
         )
         grp = groups[selected_group_key]
-        grp_series = {k: series_map[k] for k in grp.members if k in series_map}
+
+        # nps_portfolio는 시계열이 아닌 자산배분 데이터 — 포트폴리오 뷰에서 별도 표시
+        non_series = [k for k in grp.members if k == "nps_portfolio"]
+        grp_series = {k: series_map[k] for k in grp.members if k in series_map and k != "nps_portfolio"}
+
+        if non_series:
+            st.info("📊 국민연금 포트폴리오는 '포트폴리오' 뷰에서 확인하세요.")
+
+        # API 키 미설정으로 수집 실패한 지표 안내
+        missing = [k for k in grp.members if k not in series_map and k != "nps_portfolio"]
+        if missing:
+            missing_names = [display_names.get(k, k) for k in missing]
+            st.warning(f"데이터 없는 지표: {', '.join(missing_names)}  \n"
+                       "FRED / ECOS API 키가 `.env`에 설정되어 있는지 확인하세요.")
 
         if not grp_series:
-            st.warning("이 묶음에 데이터가 없습니다. 먼저 `run_daily.py`를 실행해주세요.")
+            st.warning("이 묶음에 수집된 데이터가 없습니다.")
         else:
             cards = metric_cards(grp_series, display_names, units)
             cols = st.columns(min(len(cards), 4))
