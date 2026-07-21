@@ -26,6 +26,11 @@ LABEL_STYLE = {
 
 
 @st.cache_data(ttl=1800)
+def _check_krx_login():
+    return krx.check_krx_login()
+
+
+@st.cache_data(ttl=1800)
 def _load_ticker_data(ticker: str, start: date, end: date):
     price_volume = krx.get_price_volume(ticker, start, end)
     shorting = krx.get_shorting(ticker, start, end)
@@ -48,6 +53,15 @@ def render(dark: bool, us_series_map: dict[str, pd.Series]) -> None:
             "미설정 시 주가·거래량 기반 분석만 제공됩니다.",
             icon="🔑",
         )
+    else:
+        login_ok, login_msg = _check_krx_login()
+        if not login_ok:
+            st.error(
+                f"**{login_msg}**  \n"
+                "`.env`의 `KRX_ID`, `KRX_PW`를 확인해주세요. "
+                "로그인 실패 시 공매도·투자자별 수급 데이터는 표시되지 않습니다.",
+                icon="🚫",
+            )
 
     col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
@@ -78,6 +92,14 @@ def render(dark: bool, us_series_map: dict[str, pd.Series]) -> None:
 
     close = price_volume["종가"]
     low_date, low_price = deadcat.find_recent_low(close, lookback=40)
+
+    # ── 차트 (주가·거래량·이평선, 최상단) ──────────────────────
+    st.subheader("주가 · 거래량 (5/20/50일 이평선)")
+    st.plotly_chart(
+        price_volume_chart(close, price_volume["거래량"], low_date=low_date, title=f"{name} 종가·거래량", dark=dark),
+        use_container_width=True,
+    )
+    st.markdown("---")
 
     # ── 지표 설명 ────────────────────────────────────────────
     with st.expander("📖 판별 지표 설명 (4가지 기준)", expanded=False):
@@ -154,13 +176,7 @@ def render(dark: bool, us_series_map: dict[str, pd.Series]) -> None:
 
     st.markdown("---")
 
-    # ── 차트 ─────────────────────────────────────────────────
-    st.subheader("주가 · 거래량")
-    st.plotly_chart(
-        price_volume_chart(close, price_volume["거래량"], low_date=low_date, title=f"{name} 종가·거래량", dark=dark),
-        use_container_width=True,
-    )
-
+    # ── 공매도 · 투자자별 수급 ─────────────────────────────────
     if not shorting.empty:
         st.subheader("공매도 거래비중 · 잔고비중")
         st.plotly_chart(shorting_chart(shorting, dark=dark), use_container_width=True)

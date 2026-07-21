@@ -101,8 +101,9 @@ def price_volume_chart(
     title: str = "",
     height: int = 420,
     dark: bool = False,
+    ma_windows: tuple[int, ...] = (5, 20, 50),
 ) -> go.Figure:
-    """종가(라인, 상단) + 거래량(바, 하단) 콤보 차트. 저점(low_date)을 마커로 표시."""
+    """종가(라인, 상단) + 거래량(바, 하단) 콤보 차트. 저점(low_date)을 마커로 표시. 이동평균선(ma_windows)을 함께 표시."""
     from plotly.subplots import make_subplots
 
     layout = _theme_layout(dark)
@@ -110,6 +111,18 @@ def price_volume_chart(
 
     p = price.dropna()
     fig.add_trace(go.Scatter(x=p.index, y=p.values, mode="lines", name="종가", line=dict(color="#4f8ff7")), row=1, col=1)
+
+    ma_colors = ["#f7a44f", "#2ecc71", "#c47ff7"]
+    for i, window in enumerate(ma_windows):
+        ma = p.rolling(window=window, min_periods=window).mean()
+        fig.add_trace(
+            go.Scatter(
+                x=ma.index, y=ma.values, mode="lines", name=f"{window}일 이평선",
+                line=dict(color=ma_colors[i % len(ma_colors)], width=1.3, dash="dot"),
+            ),
+            row=1, col=1,
+        )
+
     if low_date is not None and low_date in p.index:
         fig.add_trace(
             go.Scatter(
@@ -125,7 +138,7 @@ def price_volume_chart(
     fig.add_trace(go.Bar(x=v.index, y=v.values, name="거래량", marker_color=colors), row=2, col=1)
 
     fig.update_layout(
-        title=title, height=height, hovermode="x unified", showlegend=False,
+        title=title, height=height, hovermode="x unified", showlegend=True,
         margin=dict(l=40, r=20, t=50, b=40),
         **{k: v_ for k, v_ in layout.items() if k not in ("xaxis", "yaxis")},
     )

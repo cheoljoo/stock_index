@@ -43,20 +43,26 @@ def main():
     dark = (st.get_option("theme.base") or "light") == "dark"
 
     # ── Sidebar ──────────────────────────────────────────────
-    st.sidebar.title("🧭 주식 지표")
+    st.sidebar.title("🧭 주식 지표 대시보드")
     st.sidebar.markdown("---")
 
-    days_back = st.sidebar.slider("조회 기간 (일)", 30, 730, 365, step=30)
+    page = st.sidebar.radio("메뉴", ["📊 주식 지표", "🐈‍⬛ 데드캣 바운스 분석"])
+    st.sidebar.markdown("---")
+
+    view = None
+    if page == "📊 주식 지표":
+        days_back = st.sidebar.slider("조회 기간 (일)", 30, 730, 365, step=30)
+        normalize = st.sidebar.checkbox("정규화 (첫날=100)", value=False)
+        view = st.sidebar.radio("뷰 선택", ["묶음별", "추세별", "포트폴리오", "알림 현황"])
+        st.sidebar.markdown("---")
+    else:
+        # 데드캣 뷰는 자체적으로 종목·기간을 선택하므로 조회 기간은 미국 지수 비교용 기본값만 사용
+        days_back = 365
+        normalize = False
+
     end = date.today()
     start = end - timedelta(days=days_back)
 
-    normalize = st.sidebar.checkbox("정규화 (첫날=100)", value=False)
-
-    view = st.sidebar.radio(
-        "뷰 선택",
-        ["묶음별", "추세별", "포트폴리오", "데드캣 바운스 분석", "알림 현황"],
-    )
-    st.sidebar.markdown("---")
     st.sidebar.caption("데이터 소스: yfinance · FRED · CoinGecko · 한국은행 ECOS")
     st.sidebar.markdown("---")
     st.sidebar.markdown("[🏠 홈으로](http://psncs.iptime.org/)")
@@ -69,6 +75,16 @@ def main():
     trend_windows = {k: v.trend_window for k, v in indicators.items()}
 
     # ── Views ────────────────────────────────────────────────
+    if page == "🐈‍⬛ 데드캣 바운스 분석":
+        us_keys = ["nasdaq100", "sp500", "soxx", "smh"]
+        us_compare_map = {
+            display_names.get(k, k): series_map[k]
+            for k in us_keys
+            if k in series_map and not series_map[k].dropna().empty
+        }
+        deadcat_view.render(dark=dark, us_series_map=us_compare_map)
+        return
+
     if view == "묶음별":
         st.title("묶음별 지표")
         group_keys = list(groups.keys())
@@ -149,15 +165,6 @@ def main():
             "**출처**: [국민연금공단 기금운용현황](https://fund.nps.or.kr)  \n"
             "데이터는 분기별 공시 기준입니다."
         )
-
-    elif view == "데드캣 바운스 분석":
-        us_keys = ["nasdaq100", "sp500", "soxx", "smh"]
-        us_compare_map = {
-            display_names.get(k, k): series_map[k]
-            for k in us_keys
-            if k in series_map and not series_map[k].dropna().empty
-        }
-        deadcat_view.render(dark=dark, us_series_map=us_compare_map)
 
     elif view == "알림 현황":
         st.title("임계치 알림 현황")
