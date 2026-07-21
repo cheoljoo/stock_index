@@ -16,6 +16,7 @@ from stockindex.core.trend import group_by_trend, TrendLabel
 from stockindex.storage import db as _db
 from stockindex.providers.portfolio_provider import PortfolioProvider
 from stockindex.dashboard.components.charts import line_chart, portfolio_bar, metric_cards
+from stockindex.dashboard.components import deadcat_view
 
 TREND_LABELS: dict[TrendLabel, str] = {
     "up": "📈 상향",
@@ -53,7 +54,7 @@ def main():
 
     view = st.sidebar.radio(
         "뷰 선택",
-        ["묶음별", "추세별", "포트폴리오", "알림 현황"],
+        ["묶음별", "추세별", "포트폴리오", "데드캣 바운스 분석", "알림 현황"],
     )
     st.sidebar.markdown("---")
     st.sidebar.caption("데이터 소스: yfinance · FRED · CoinGecko · 한국은행 ECOS")
@@ -148,6 +149,15 @@ def main():
             "**출처**: [국민연금공단 기금운용현황](https://fund.nps.or.kr)  \n"
             "데이터는 분기별 공시 기준입니다."
         )
+
+    elif view == "데드캣 바운스 분석":
+        us_keys = ["nasdaq100", "sp500", "soxx", "smh"]
+        us_compare_map = {
+            display_names.get(k, k): series_map[k]
+            for k in us_keys
+            if k in series_map and not series_map[k].dropna().empty
+        }
+        deadcat_view.render(dark=dark, us_series_map=us_compare_map)
 
     elif view == "알림 현황":
         st.title("임계치 알림 현황")
