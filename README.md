@@ -10,6 +10,8 @@
 - **단계별 임계치 알림**: `config/thresholds.yaml`에서 단계별 조건 설정, 도달 시 HTML 메일 발송
 - **대시보드**: Streamlit + Plotly 인터랙티브 차트
 - **국부펀드 포트폴리오**: 국민연금 자산배분 변화 추이 (표 + 스택 차트)
+- **데드캣 바운스 분석**: 공매도·거래량·투자자별(외국인/기관/개인) 수급 + 글로벌 동조화 기준으로
+  일시적 기술적 반등(데드캣 바운스)인지 진짜 추세 전환인지 판별하고, 어제 종가 기준 결론과 근거를 표시
 
 ## 기본 지표
 
@@ -58,6 +60,7 @@ cp .env.example .env   # API 키 설정
 | SMTP | 임계치 알림 메일 | Gmail 앱 비밀번호 등 |
 | CoinGecko | 코인 가격 | 무료 (키 없음, 365일 이내 데이터) |
 | yfinance | 주가·ETF·환율·원자재 | 무료 (키 없음) |
+| KRX (data.krx.co.kr) | 공매도·투자자별 수급 (데드캣 바운스 분석) | 무료 회원가입 필요 (`KRX_ID`, `KRX_PW`). 미설정 시 주가·거래량 분석만 제공 |
 
 ## 사용법
 
@@ -214,6 +217,7 @@ class MyProvider(Provider):
 | [한국은행 ECOS](https://ecos.bok.or.kr/api/) | 한국 금리·거시지표 | 공공데이터 이용허락 |
 | [CoinGecko](https://www.coingecko.com/en/api) | 코인 가격 | CoinGecko ToS 준수 |
 | [국민연금 공시](https://fund.nps.or.kr) | 포트폴리오 | 공개 공시 데이터 |
+| [KRX 정보데이터시스템](https://data.krx.co.kr) ([pykrx](https://github.com/sharebook-kr/pykrx)) | 공매도·투자자별 수급 (데드캣 바운스 분석) | KRX 이용약관 준수, 무료 회원 로그인 필요 |
 
 > **면책조항**: 본 프로젝트는 투자 조언을 제공하지 않습니다. 데이터 정확성을 보장하지 않으며, 투자 결정에 대한 책임은 사용자에게 있습니다.
 
