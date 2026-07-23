@@ -10,10 +10,12 @@ _FREE_LIMIT_DAYS = 364  # free tier: within 365 days
 
 
 class CoinGeckoProvider(Provider):
+    """CoinGecko 코인 가격(USD) provider. symbol은 CoinGecko coin id (예: "bitcoin"). 키 불필요."""
     name = "coingecko"
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(10))
     def fetch(self, symbol: str, start: date, end: date) -> pd.Series:
+        """일별 종가(USD)를 조회한다. 무료 티어 제한으로 최근 364일 이전 데이터는 잘라낸다."""
         # Free tier can only access last 364 days
         earliest = date.today() - timedelta(days=_FREE_LIMIT_DAYS)
         if start < earliest:

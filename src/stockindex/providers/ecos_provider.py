@@ -20,6 +20,7 @@ class EcosProvider(Provider):
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(5))
     def fetch(self, symbol: str, start: date, end: date) -> pd.Series:
+        """월별 통계값을 조회한다. `ECOS_API_KEY` 미설정 시 제한적인 "sample" 키로 시도."""
         api_key = os.environ.get("ECOS_API_KEY", "sample")
         parts = symbol.split("/")
         stat_code = parts[0]

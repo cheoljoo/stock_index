@@ -23,6 +23,7 @@ from stockindex.core import uptrend
 from stockindex.dashboard.components.deadcat_view import PRESET_TICKERS
 from stockindex.dashboard.components.charts import price_volume_chart, rsi_chart, macd_chart, investor_flow_chart
 
+# 신호 카드 표시용: uptrend.SignalLabel → (배지 문구, 색상)
 LABEL_STYLE = {
     "bullish": ("📈 상승 신호", "#2ecc71"),
     "bearish": ("📉 하락 신호", "#ff4d4f"),
@@ -30,6 +31,7 @@ LABEL_STYLE = {
     "unknown": ("❔ 데이터 없음", "#8892b0"),
 }
 
+# 결론 박스 테두리 색상: uptrend.Conclusion["verdict"] → 색상
 VERDICT_COLOR = {
     "strong_uptrend": "#2ecc71",
     "building": "#8bd4a0",

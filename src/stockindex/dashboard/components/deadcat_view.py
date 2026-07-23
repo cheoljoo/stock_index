@@ -36,6 +36,7 @@ PRESET_TICKERS = {
     "352820": "하이브",
 }
 
+# 신호 카드 표시용: deadcat.SignalLabel → (배지 문구, 색상)
 LABEL_STYLE = {
     "dead_cat": ("🔻 데드캣 신호", "#ff4d4f"),
     "real_rebound": ("✅ 진짜 반등 신호", "#2ecc71"),
