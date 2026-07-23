@@ -1,3 +1,17 @@
+"""`config/thresholds.yaml`에 정의된 단계별 임계치를 평가하고, 도달한 항목을 리턴하는 엔진.
+
+```mermaid
+flowchart TD
+    A["thresholds.yaml (지표별 level 목록)"] --> B(run_alerts)
+    C["series_map (collect_all 결과)"] --> B
+    B -->|evaluate_threshold: >=, <=, pct_change, cross| D{도달?}
+    D -->|No| B
+    D -->|Yes| E["db.record_alert (중복 발송 방지)"]
+    E -->|신규| F["triggered 목록에 추가 (지표, level, 값, 수신자)"]
+    E -->|중복(이미 발송됨)| B
+    F --> G["notify.mailer.send_alert (run_daily.py에서 호출)"]
+```
+"""
 from __future__ import annotations
 from datetime import date
 import pandas as pd
@@ -6,6 +20,20 @@ from stockindex.storage import db as _db
 
 
 def evaluate_threshold(series: pd.Series, level: ThresholdLevel) -> bool:
+    """시계열의 최신값이 하나의 임계 조건(level.condition)을 충족하는지 평가한다.
+
+    지원하는 연산자:
+        - `>=`, `<=`: 최신값과 절대 기준값 비교
+        - `pct_change`: `window`일 전 대비 등락률(%)이 기준값 이상(양수) 또는 이하(음수)
+        - `cross`: 최신값이 `window`일 이동평균을 아래→위로 돌파했는지
+
+    Args:
+        series: 평가할 시계열 (최신값이 마지막 원소).
+        level: 조건(`level.condition`)을 담은 임계치 정의.
+
+    Returns:
+        조건 충족 여부.
+    """
     if series.empty:
         return False
     cond = level.condition

@@ -270,3 +270,24 @@ def register(p): PROVIDERS[p.name] = p
 - **대시보드**: `streamlit run src/stockindex/dashboard/app.py` 로 띄워 묶음/추세/포트폴리오 뷰 렌더 확인.
 - **메일**: MailHog 또는 로컬 SMTP 디버그 서버로 HTML·링크 포함 발송 확인.
 - **config 확장 테스트**: indicators.yaml에 새 지표 한 줄 추가 → 코드 변경 없이 수집·표시되는지 확인.
+
+---
+
+## 13. 구현 이후 추가된 기능 (Addendum)
+
+원래 계획(위 1~12절)은 초기 스캐폴딩 시점의 설계이며, 이후 실제 사용 중 다음 기능이 추가로
+구현되었다 (최신 상세는 README.md, 각 모듈 docstring 참고):
+
+- **`core/deadcat.py` + `dashboard/components/deadcat_view.py`**: 데드캣 바운스 분석.
+  공매도·거래량·투자자수급·글로벌동조화 4개 신호로 반등의 진위 판별.
+- **`core/uptrend.py` + `dashboard/components/uptrend_view.py`**: 상승 추세 전환 분석.
+  이동평균 크로스·RSI·MACD·가격패턴·박스권·거래량·수급 7개 신호를 **상승/하락 대칭**으로 판별해
+  5단계(strong_uptrend/building/neutral/weakening/strong_downtrend)로 결론.
+- **`providers/krx_provider.py`**: 위 두 분석 전용 — pykrx로 시세/공매도/투자자수급을 실시간 조회.
+  `check_krx_login()`으로 KRX_ID/KRX_PW 오인증을 화면에 직접 노출(콘솔 로그에만 의존하지 않음).
+  이 provider는 `core/registry.py`의 일반 지표 파이프라인과는 별도 경로로, **매일 cron 수집 대상이
+  아니며** 대시보드가 페이지를 그릴 때마다 그때그때 조회한다.
+- 대시보드 사이드바 메뉴가 "📊 주식 지표"/"🐈‍⬛ 데드캣 바운스 분석"/"📈 상승 추세 전환 분석" 3개
+  독립 페이지로 분리됨 (원래는 하나의 "뷰 선택" 라디오에 데드캣이 섞여 있었음).
+- 두 분석 페이지 모두 선택 가능한 전체 종목(`deadcat_view.PRESET_TICKERS`)을 일괄 계산하는
+  요약표를 페이지 하단에 제공.

@@ -1,3 +1,8 @@
+"""지표 시계열(날짜→값)을 지표당 파일 하나(`<parquet_dir>/<key>.parquet`)로 저장하는 저장소.
+
+`save_series()`는 append-merge 방식이라 매일 조금씩 겹치는 구간을 수집해도
+중복 없이(같은 날짜는 최신값으로) 누적된다.
+"""
 from __future__ import annotations
 from pathlib import Path
 from datetime import date
@@ -24,6 +29,7 @@ def save_series(parquet_dir: str | Path, key: str, series: pd.Series) -> None:
 
 
 def load_series(parquet_dir: str | Path, key: str, start: date | None = None, end: date | None = None) -> pd.Series:
+    """저장된 시계열을 읽는다. 파일이 없으면 빈 Series. `start`/`end`로 기간 필터 가능."""
     p = _path(parquet_dir, key)
     if not p.exists():
         return pd.Series(dtype=float, name=key)
@@ -38,6 +44,7 @@ def load_series(parquet_dir: str | Path, key: str, start: date | None = None, en
 
 
 def latest_value(parquet_dir: str | Path, key: str) -> tuple[pd.Timestamp | None, float | None]:
+    """가장 최근 (날짜, 값)을 반환한다. 데이터가 없으면 (None, None)."""
     s = load_series(parquet_dir, key)
     if s.empty:
         return None, None
@@ -45,6 +52,7 @@ def latest_value(parquet_dir: str | Path, key: str) -> tuple[pd.Timestamp | None
 
 
 def list_available(parquet_dir: str | Path) -> list[str]:
+    """저장된 Parquet 파일들로부터 사용 가능한 지표 key 목록을 만든다."""
     p = Path(parquet_dir)
     if not p.exists():
         return []

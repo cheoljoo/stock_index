@@ -1,3 +1,14 @@
+"""매일 지표 데이터를 수집해 저장소(Parquet/SQLite)에 반영하는 오케스트레이션 계층.
+
+```mermaid
+flowchart LR
+    A[registry.build_registry] -->|key -> config, provider| B(collect_all)
+    B -->|provider.fetch symbol,start,end| C[각 Provider]
+    C -->|pd.Series| B
+    B -->|save_series| D[(Parquet: data/series/*.parquet)]
+    B -->|upsert_indicator_meta| E[(SQLite: indicators 테이블)]
+```
+"""
 from __future__ import annotations
 from datetime import date, timedelta
 import pandas as pd
@@ -12,6 +23,18 @@ def collect_all(
     end: date | None = None,
     keys: list[str] | None = None,
 ) -> dict[str, pd.Series]:
+    """활성화된(enabled) 지표를 모두(또는 `keys`로 지정한 것만) 수집해 저장한다.
+
+    지표 하나가 실패해도 나머지 수집은 계속 진행된다(예외를 잡아 로그만 남김).
+
+    Args:
+        start: 조회 시작일. 생략 시 `settings.collect.lookback_days`만큼 과거로 계산.
+        end: 조회 종료일. 생략 시 오늘.
+        keys: 수집할 지표 key 목록. 생략 시 registry의 전체 지표.
+
+    Returns:
+        {지표key: 수집된 시계열(pd.Series)} — 수집에 성공한 지표만 포함.
+    """
     settings = load_settings()
     db_path = settings.storage.db_path
     parquet_dir = settings.storage.parquet_dir
@@ -62,6 +85,18 @@ def load_all_series(
     start: date | None = None,
     end: date | None = None,
 ) -> dict[str, pd.Series]:
+    """저장소(Parquet)에서 이미 수집된 시계열을 읽기만 한다 (네트워크 호출 없음).
+
+    대시보드가 화면을 그릴 때 사용하는 함수 — 데이터 수집(`collect_all`)과
+    분리되어 있어 대시보드는 항상 마지막 cron 수집 결과를 읽는다.
+
+    Args:
+        keys: 조회할 지표 key 목록. 생략 시 저장된 전체 지표.
+        start, end: 기간 필터.
+
+    Returns:
+        {지표key: 시계열} — 데이터가 있는 지표만 포함.
+    """
     settings = load_settings()
     parquet_dir = settings.storage.parquet_dir
     available = ts.list_available(parquet_dir)

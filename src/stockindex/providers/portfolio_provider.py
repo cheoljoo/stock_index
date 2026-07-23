@@ -38,6 +38,7 @@ NPS_ALLOCATION = {
 
 
 class PortfolioProvider(Provider):
+    """국민연금(NPS) 자산배분 비중 제공자. `NPS_ALLOCATION`은 분기 공시를 수동 반영한 값."""
     name = "portfolio"
 
     def fetch(self, symbol: str, start: date, end: date) -> pd.Series:

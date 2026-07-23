@@ -1,3 +1,23 @@
+"""Streamlit 대시보드 진입점.
+
+`make dashboard` 또는 systemd 서비스(`stockindex.service`)가 이 파일을
+`streamlit run`으로 실행한다. 데이터 수집(`scripts/run_daily.py`)과는 완전히
+분리되어 있으며, 여기서는 저장소(Parquet/SQLite)를 읽거나 데드캣·상승추세
+분석처럼 KRX에서 실시간 조회만 할 뿐 아무것도 저장하지 않는다.
+
+```mermaid
+flowchart TD
+    Start(["사이드바: 메뉴 선택"]) --> P1["📊 주식 지표"]
+    Start --> P2["🐈‍⬛ 데드캣 바운스 분석"]
+    Start --> P3["📈 상승 추세 전환 분석"]
+
+    P1 --> V1["묶음별"] & V2["추세별"] & V3["포트폴리오"] & V4["알림 현황"]
+    V1 & V2 & V3 & V4 -->|load_all_series 로 Parquet 읽기| DataStore[(Parquet/SQLite)]
+
+    P2 -->|deadcat_view.render| KRX["pykrx 실시간 조회"]
+    P3 -->|uptrend_view.render| KRX
+```
+"""
 from __future__ import annotations
 import sys
 from pathlib import Path
@@ -16,7 +36,7 @@ from stockindex.core.trend import group_by_trend, TrendLabel
 from stockindex.storage import db as _db
 from stockindex.providers.portfolio_provider import PortfolioProvider
 from stockindex.dashboard.components.charts import line_chart, portfolio_bar, metric_cards
-from stockindex.dashboard.components import deadcat_view
+from stockindex.dashboard.components import deadcat_view, uptrend_view
 
 TREND_LABELS: dict[TrendLabel, str] = {
     "up": "📈 상향",
@@ -46,7 +66,9 @@ def main():
     st.sidebar.title("🧭 주식 지표 대시보드")
     st.sidebar.markdown("---")
 
-    page = st.sidebar.radio("메뉴", ["📊 주식 지표", "🐈‍⬛ 데드캣 바운스 분석"])
+    page = st.sidebar.radio(
+        "메뉴", ["📊 주식 지표", "🐈‍⬛ 데드캣 바운스 분석", "📈 상승 추세 전환 분석"],
+    )
     st.sidebar.markdown("---")
 
     view = None
@@ -56,7 +78,7 @@ def main():
         view = st.sidebar.radio("뷰 선택", ["묶음별", "추세별", "포트폴리오", "알림 현황"])
         st.sidebar.markdown("---")
     else:
-        # 데드캣 뷰는 자체적으로 종목·기간을 선택하므로 조회 기간은 미국 지수 비교용 기본값만 사용
+        # 데드캣·상승추세 뷰는 자체적으로 종목·기간을 선택하므로 조회 기간은 미국 지수 비교용 기본값만 사용
         days_back = 365
         normalize = False
 
@@ -83,6 +105,10 @@ def main():
             if k in series_map and not series_map[k].dropna().empty
         }
         deadcat_view.render(dark=dark, us_series_map=us_compare_map)
+        return
+
+    if page == "📈 상승 추세 전환 분석":
+        uptrend_view.render(dark=dark)
         return
 
     if view == "묶음별":
