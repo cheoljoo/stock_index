@@ -1,5 +1,14 @@
 indicators:
   # ── 국내 주가지수 ────────────────────────────────
+  kospi:
+    enabled: true
+    display_name: "KOSPI 종합지수"
+    provider: yfinance
+    symbol: "^KS11"
+    unit: "pt"
+    category: equity_index
+    trend_window: 20
+
   kospi200:
     enabled: true
     display_name: "KOSPI 200"

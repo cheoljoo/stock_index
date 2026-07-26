@@ -83,3 +83,40 @@ def fetch_roic_series(symbol: str) -> pd.Series:
     if not years:
         return pd.Series(dtype=float, name=symbol)
     return pd.Series(values, index=pd.DatetimeIndex(years), name=symbol).sort_index()
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(5))
+def fetch_eps_estimates(symbol: str) -> dict:
+    """애널리스트 컨센서스 기준 이번 회계연도(0y)·선행(내년, +1y) EPS 추정치를 가져온다.
+
+    "선행 EPS"는 아직 발표되지 않은 향후 실적에 대한 애널리스트들의 평균 추정치로,
+    이미 발표된 실적 기반의 trailing EPS(예: `krx_provider.get_fundamental`의 EPS)와는
+    다른 값이다. yfinance의 `Ticker.eps_trend`는 시계열이 아니라 "현재 시점의 추정치
+    스냅샷"만 제공하므로, 과거 추이가 아니라 최신 컨센서스 값만 반환한다.
+
+    Returns:
+        {"current_year_eps": float | None, "forward_eps": float | None,
+         "forward_eps_90d_ago": float | None, "currency": str | None}
+        데이터가 없으면 빈 dict.
+    """
+    ticker = yf.Ticker(symbol)
+    try:
+        trend = ticker.eps_trend
+    except Exception:
+        return {}
+    if trend is None or trend.empty:
+        return {}
+
+    result: dict = {}
+    if "currency" in trend.columns and not trend["currency"].empty:
+        result["currency"] = trend["currency"].iloc[0]
+    if "0y" in trend.index and "current" in trend.columns:
+        v = trend.loc["0y", "current"]
+        result["current_year_eps"] = float(v) if pd.notna(v) else None
+    if "+1y" in trend.index and "current" in trend.columns:
+        v = trend.loc["+1y", "current"]
+        result["forward_eps"] = float(v) if pd.notna(v) else None
+        if "90daysAgo" in trend.columns:
+            v90 = trend.loc["+1y", "90daysAgo"]
+            result["forward_eps_90d_ago"] = float(v90) if pd.notna(v90) else None
+    return result
