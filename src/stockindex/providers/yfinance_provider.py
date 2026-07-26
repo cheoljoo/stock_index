@@ -41,3 +41,45 @@ def fetch_ohlcv(symbol: str, start: date, end: date) -> pd.DataFrame:
     df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
     df.index.name = "date"
     return df.sort_index()
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(5))
+def fetch_roic_series(symbol: str) -> pd.Series:
+    """연도별 ROIC(투하자본이익률, %)를 계산한다.
+
+    ROIC = NOPAT / Invested Capital
+      - NOPAT(세후 영업이익) = EBIT × (1 − 유효세율)
+      - Invested Capital: yfinance 대차대조표가 이미 계산해 제공하는 값을 그대로 사용
+        (Total Debt + Total Equity − 비영업 현금성자산 등을 반영한 값)
+
+    yfinance 무료 API는 연간 재무제표를 보통 최근 4~5개년치만 제공한다(유료 API처럼
+    10년 전체를 주지 않음) — 이 함수는 제공되는 만큼만 반환한다. 데이터가 없으면 빈 Series.
+    """
+    ticker = yf.Ticker(symbol)
+    financials = ticker.financials
+    balance_sheet = ticker.balance_sheet
+    if financials.empty or balance_sheet.empty:
+        return pd.Series(dtype=float, name=symbol)
+    if "EBIT" not in financials.index or "Tax Rate For Calcs" not in financials.index:
+        return pd.Series(dtype=float, name=symbol)
+    if "Invested Capital" not in balance_sheet.index:
+        return pd.Series(dtype=float, name=symbol)
+
+    ebit = financials.loc["EBIT"]
+    tax_rate = financials.loc["Tax Rate For Calcs"]
+    invested_capital = balance_sheet.loc["Invested Capital"]
+
+    years, values = [], []
+    for col in financials.columns:
+        if col not in invested_capital.index:
+            continue
+        e, t, ic = ebit.get(col), tax_rate.get(col), invested_capital.get(col)
+        if pd.isna(e) or pd.isna(t) or pd.isna(ic) or ic == 0:
+            continue
+        nopat = e * (1 - t)
+        years.append(pd.Timestamp(col))
+        values.append(nopat / ic * 100)
+
+    if not years:
+        return pd.Series(dtype=float, name=symbol)
+    return pd.Series(values, index=pd.DatetimeIndex(years), name=symbol).sort_index()

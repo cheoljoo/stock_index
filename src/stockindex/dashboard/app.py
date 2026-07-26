@@ -11,6 +11,8 @@ flowchart TD
     Start --> P2["🐈‍⬛ 데드캣 바운스 분석"]
     Start --> P3["📈 상승 추세 전환 분석"]
     Start --> P4["🔬 반도체 산업 분석"]
+    Start --> P5["🏆 ROIC 분석"]
+    Start --> P6["💵 미국 물가·환율"]
 
     P1 --> V1["묶음별"] & V2["추세별"] & V3["포트폴리오"] & V4["알림 현황"]
     V1 & V2 & V3 & V4 -->|load_all_series 로 Parquet 읽기| DataStore[(Parquet/SQLite)]
@@ -19,6 +21,8 @@ flowchart TD
     P3 -->|uptrend_view.render| KRX
     P4 -->|semiconductor_view.render| DataStore
     P4 -->|삼성전자·SK하이닉스 PER/EPS| KRX
+    P5 -->|roic_view.render| YF["yfinance 재무제표 실시간 조회"]
+    P6 -->|inflation_view.render| DataStore
 ```
 """
 from __future__ import annotations
@@ -39,7 +43,7 @@ from stockindex.core.trend import group_by_trend, TrendLabel
 from stockindex.storage import db as _db
 from stockindex.providers.portfolio_provider import PortfolioProvider
 from stockindex.dashboard.components.charts import line_chart, portfolio_bar, metric_cards
-from stockindex.dashboard.components import deadcat_view, uptrend_view, semiconductor_view
+from stockindex.dashboard.components import deadcat_view, uptrend_view, semiconductor_view, roic_view, inflation_view
 
 TREND_LABELS: dict[TrendLabel, str] = {
     "up": "📈 상향",
@@ -70,7 +74,7 @@ def main():
     st.sidebar.markdown("---")
 
     page = st.sidebar.radio(
-        "메뉴", ["📊 주식 지표", "🐈‍⬛ 데드캣 바운스 분석", "📈 상승 추세 전환 분석", "🔬 반도체 산업 분석"],
+        "메뉴", ["📊 주식 지표", "🐈‍⬛ 데드캣 바운스 분석", "📈 상승 추세 전환 분석", "🔬 반도체 산업 분석", "🏆 ROIC 분석", "💵 미국 물가·환율"],
     )
     st.sidebar.markdown("---")
 
@@ -81,7 +85,7 @@ def main():
         view = st.sidebar.radio("뷰 선택", ["묶음별", "추세별", "포트폴리오", "알림 현황"])
         st.sidebar.markdown("---")
     else:
-        # 데드캣·상승추세·반도체 뷰는 자체적으로 종목·기간을 선택하므로 조회 기간은 기본값(365일)만 사용
+        # 데드캣·상승추세·반도체·ROIC·물가 뷰는 자체적으로 종목·기간을 선택하므로 조회 기간은 기본값(365일)만 사용
         days_back = 365
         normalize = False
 
@@ -116,6 +120,14 @@ def main():
 
     if page == "🔬 반도체 산업 분석":
         semiconductor_view.render(dark=dark, series_map=series_map, display_names=display_names)
+        return
+
+    if page == "🏆 ROIC 분석":
+        roic_view.render(dark=dark)
+        return
+
+    if page == "💵 미국 물가·환율":
+        inflation_view.render(dark=dark)
         return
 
     if view == "묶음별":

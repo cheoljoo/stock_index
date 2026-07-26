@@ -38,6 +38,7 @@ def line_chart(
     title: str = "",
     normalize: bool = False,
     min_max: bool = False,
+    markers: bool = False,
     height: int = 400,
     dark: bool = False,
 ) -> go.Figure:
@@ -45,10 +46,12 @@ def line_chart(
 
     `normalize=True`면 첫날=100 기준으로, `min_max=True`면 구간 내 최솟값=0·최댓값=100 기준으로
     스케일링한다 (변동폭이 서로 다른 지표를 같은 스케일에서 등락 비교할 때는 `min_max`가 더 낫다).
-    둘 다 True면 `min_max`가 우선한다.
+    둘 다 True면 `min_max`가 우선한다. `markers=True`면 실제 데이터가 있는 지점에 점(마커)을 표시한다
+    (연간 데이터처럼 점 사이 간격이 넓어 실측치와 보간선을 구분하고 싶을 때 유용).
     """
     layout = _theme_layout(dark)
     fig = go.Figure()
+    mode = "lines+markers" if markers else "lines"
     for key, s in series_map.items():
         s = s.dropna()
         if s.empty:
@@ -60,7 +63,7 @@ def line_chart(
         else:
             y = s
         name = display_names.get(key, key)
-        fig.add_trace(go.Scatter(x=s.index, y=y, mode="lines", name=name))
+        fig.add_trace(go.Scatter(x=s.index, y=y, mode=mode, name=name))
     fig.update_layout(
         title=title,
         height=height,

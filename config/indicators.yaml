@@ -218,9 +218,18 @@ indicators:
   # ── 미국 거시지표 (FRED) ─────────────────────────
   us_cpi:
     enabled: true
-    display_name: "미국 CPI (소비자물가)"
+    display_name: "미국 CPI (소비자물가, Headline)"
     provider: fred
     symbol: "CPIAUCSL"
+    unit: "index"
+    category: macro
+    trend_window: 6
+
+  us_core_cpi:
+    enabled: true
+    display_name: "미국 근원 CPI (식품·에너지 제외, Core)"
+    provider: fred
+    symbol: "CPILFESL"
     unit: "index"
     category: macro
     trend_window: 6
