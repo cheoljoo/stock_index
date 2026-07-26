@@ -19,8 +19,9 @@ import pandas as pd
 import streamlit as st
 
 from stockindex.providers import krx_provider as krx
+from stockindex.providers import yfinance_provider as yfp
 from stockindex.core import uptrend
-from stockindex.dashboard.components.deadcat_view import PRESET_TICKERS
+from stockindex.dashboard.components.deadcat_view import PRESET_TICKERS, US_PRESET_TICKERS, is_kr_ticker
 from stockindex.dashboard.components.charts import price_volume_chart, rsi_chart, macd_chart, investor_flow_chart
 
 # 신호 카드 표시용: uptrend.SignalLabel → (배지 문구, 색상)
@@ -115,10 +116,19 @@ def _check_krx_login():
 
 @st.cache_data(ttl=1800)
 def _load_ticker_data(ticker: str, start: date, end: date):
-    """한 종목의 시세/투자자수급/종목명을 KRX에서 조회한다 (30분 캐시)."""
-    price_volume = krx.get_price_volume(ticker, start, end)
-    investor = krx.get_investor_trading(ticker, start, end)
-    name = krx.get_stock_name(ticker)
+    """한 종목의 시세/투자자수급/종목명을 조회한다 (30분 캐시).
+
+    6자리 숫자 코드면 KRX(pykrx)에서, 그 외(예: "MMM")는 yfinance에서 시세만 조회한다.
+    해외 종목은 투자자별 수급 데이터가 없으므로 빈 DataFrame을 반환한다.
+    """
+    if is_kr_ticker(ticker):
+        price_volume = krx.get_price_volume(ticker, start, end)
+        investor = krx.get_investor_trading(ticker, start, end)
+        name = krx.get_stock_name(ticker)
+    else:
+        price_volume = yfp.fetch_ohlcv(ticker, start, end)
+        investor = pd.DataFrame()
+        name = US_PRESET_TICKERS.get(ticker, ticker)
     return price_volume, investor, name
 
 
@@ -152,22 +162,28 @@ def render(dark: bool) -> None:
                 icon="🚫",
             )
 
+    market = st.radio("시장", ["🇰🇷 국내(KRX)", "🇺🇸 해외(미국)"], horizontal=True, key="uptrend_market")
+    active_presets = PRESET_TICKERS if market == "🇰🇷 국내(KRX)" else US_PRESET_TICKERS
+
     col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
         preset = st.selectbox(
             "종목 선택",
-            list(PRESET_TICKERS.keys()),
-            format_func=lambda t: f"{PRESET_TICKERS[t]} ({t})",
+            list(active_presets.keys()),
+            format_func=lambda t: f"{active_presets[t]} ({t})",
             key="uptrend_ticker_preset",
         )
     with col2:
-        custom = st.text_input("직접 입력 (6자리 종목코드)", value="", key="uptrend_ticker_custom")
+        custom_label = "직접 입력 (6자리 종목코드)" if market == "🇰🇷 국내(KRX)" else "직접 입력 (예: AAPL)"
+        custom = st.text_input(custom_label, value="", key="uptrend_ticker_custom")
     with col3:
         days_back = st.number_input(
             "조회 기간(일)", min_value=120, max_value=400, value=200, step=20, key="uptrend_days_back",
         )
 
     ticker = custom.strip() if custom.strip() else preset
+    if not is_kr_ticker(ticker) and market == "🇺🇸 해외(미국)":
+        st.caption("ℹ️ 해외 종목은 KRX 투자자별 수급 데이터가 없어 '외국인·기관 쌍끌이 매매' 신호는 '데이터 없음'으로 표시됩니다.")
     end = date.today()
     start = end - timedelta(days=int(days_back))
 
@@ -342,14 +358,17 @@ def _summary_rows(tickers: dict[str, str], start: date, end: date) -> list[dict]
 
 
 def _render_summary_table() -> None:
-    """페이지 맨 아래에 `PRESET_TICKERS` 전체 종목의 상승/하락 판정 요약표를 그린다."""
+    """페이지 맨 아래에 국내·해외 프리셋 종목 전체의 상승/하락 판정 요약표를 그린다."""
     st.markdown("---")
     st.subheader("📋 선택 가능 종목 요약")
-    st.caption("아래 종목들에 대해 동일한 7가지 기준으로 일괄 계산한 요약입니다. (최근 200일 기준)")
+    st.caption(
+        "아래 종목들에 대해 동일한 7가지 기준으로 일괄 계산한 요약입니다. "
+        "(최근 200일 기준 · 해외 종목은 외국인·기관 쌍끌이 매매 지표 제외)"
+    )
     end = date.today()
     start = end - timedelta(days=200)
     with st.spinner("전체 종목 요약 계산 중..."):
-        rows = _summary_rows(PRESET_TICKERS, start, end)
+        rows = _summary_rows({**PRESET_TICKERS, **US_PRESET_TICKERS}, start, end)
     if not rows:
         st.info("요약할 데이터가 없습니다.")
         return

@@ -53,6 +53,18 @@ def get_price_volume(ticker: str, start: date, end: date) -> pd.DataFrame:
     return df.sort_index()
 
 
+@retry(stop=stop_after_attempt(2), wait=wait_fixed(3))
+def get_fundamental(ticker: str, start: date, end: date) -> pd.DataFrame:
+    """일별 투자지표(DIV/BPS/PER/PBR/EPS/DPS). 로그인 불필요. columns: DIV, BPS, PER, PBR, EPS, DPS"""
+    df = _krx.get_market_fundamental_by_date(
+        start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), ticker
+    )
+    if df is None or df.empty:
+        return pd.DataFrame()
+    df.index = pd.to_datetime(df.index).normalize()
+    return df.sort_index()
+
+
 def get_shorting(ticker: str, start: date, end: date) -> pd.DataFrame:
     """공매도 거래량/비중 + 공매도 잔고/잔고비중. KRX 로그인 필요.
 

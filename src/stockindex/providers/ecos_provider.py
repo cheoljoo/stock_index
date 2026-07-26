@@ -12,8 +12,11 @@ ECOS_BASE = "https://ecos.bok.or.kr/api/StatisticSearch"
 class EcosProvider(Provider):
     """한국은행 ECOS Open API provider.
 
-    symbol format: "{stat_code}/{item_code}"
+    symbol format: "{stat_code}/{item_code1}[/{item_code2}[/{item_code3}...]]"
     e.g. "722Y001/0101000" → 기준금리
+    e.g. "402Y016/30911203AA/D" → 수출물가지수(품목별) 시스템반도체, 달러기준
+         (이 통계표는 품목코드 외에 통화기준(C/D/W) 등 2단계 분류코드가 추가로 필요하다.
+         item_code2를 생략하면 여러 통화기준이 뒤섞여 반환되므로 반드시 명시해야 한다.)
     Free API key required from https://ecos.bok.or.kr
     """
     name = "ecos"
@@ -24,12 +27,12 @@ class EcosProvider(Provider):
         api_key = os.environ.get("ECOS_API_KEY", "sample")
         parts = symbol.split("/")
         stat_code = parts[0]
-        item_code = parts[1] if len(parts) > 1 else ""
+        item_codes = "/".join(parts[1:])
         start_str = start.strftime("%Y%m")
         end_str = end.strftime("%Y%m")
         url = (
             f"{ECOS_BASE}/{api_key}/json/kr/1/100/"
-            f"{stat_code}/M/{start_str}/{end_str}/{item_code}"
+            f"{stat_code}/M/{start_str}/{end_str}/{item_codes}"
         )
         resp = requests.get(url, timeout=30)
         resp.raise_for_status()

@@ -45,7 +45,7 @@ groups:
 
   semiconductor:
     display_name: "반도체"
-    members: [soxx, smh, nasdaq100]
+    members: [soxx, smh, nasdaq100, kospi200, us_semiconductor_production_index, kr_semiconductor_export_price_index]
 
   sovereign_funds:
     display_name: "국부펀드"

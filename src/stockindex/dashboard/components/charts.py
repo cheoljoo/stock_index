@@ -7,7 +7,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-from stockindex.core.trend import normalize_series
+from stockindex.core.trend import normalize_series, min_max_normalize
 
 
 def _theme_layout(dark: bool) -> dict:
@@ -37,17 +37,28 @@ def line_chart(
     display_names: dict[str, str],
     title: str = "",
     normalize: bool = False,
+    min_max: bool = False,
     height: int = 400,
     dark: bool = False,
 ) -> go.Figure:
-    """여러 지표를 한 화면에 겹쳐 그리는 라인 차트 ("묶음별"/"추세별" 뷰). `normalize=True`면 첫날=100 기준."""
+    """여러 지표를 한 화면에 겹쳐 그리는 라인 차트 ("묶음별"/"추세별" 뷰).
+
+    `normalize=True`면 첫날=100 기준으로, `min_max=True`면 구간 내 최솟값=0·최댓값=100 기준으로
+    스케일링한다 (변동폭이 서로 다른 지표를 같은 스케일에서 등락 비교할 때는 `min_max`가 더 낫다).
+    둘 다 True면 `min_max`가 우선한다.
+    """
     layout = _theme_layout(dark)
     fig = go.Figure()
     for key, s in series_map.items():
         s = s.dropna()
         if s.empty:
             continue
-        y = normalize_series(s) if normalize else s
+        if min_max:
+            y = min_max_normalize(s)
+        elif normalize:
+            y = normalize_series(s)
+        else:
+            y = s
         name = display_names.get(key, key)
         fig.add_trace(go.Scatter(x=s.index, y=y, mode="lines", name=name))
     fig.update_layout(

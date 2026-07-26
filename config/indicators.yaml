@@ -280,6 +280,25 @@ indicators:
     category: rate
     trend_window: 12
 
+  # ── 반도체 산업 (Semi-Conductor View) ────────────
+  us_semiconductor_production_index:
+    enabled: true
+    display_name: "미국 반도체 생산지수 (글로벌 반도체 사이클 대체지표)"
+    provider: fred
+    symbol: "IPG3344S"
+    unit: "Index 2017=100"
+    category: semiconductor
+    trend_window: 6
+
+  kr_semiconductor_export_price_index:
+    enabled: true
+    display_name: "한국 시스템반도체 수출물가지수(달러기준)"
+    provider: ecos
+    symbol: "402Y016/30911203AA/D"
+    unit: "Index 2020=100"
+    category: semiconductor
+    trend_window: 6
+
   # ── 국부펀드 포트폴리오 ──────────────────────────
   nps_portfolio:
     enabled: true

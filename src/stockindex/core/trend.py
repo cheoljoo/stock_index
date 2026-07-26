@@ -79,3 +79,19 @@ def normalize_series(series: pd.Series) -> pd.Series:
     if s.empty or s.iloc[0] == 0:
         return s
     return (s / s.iloc[0]) * 100
+
+
+def min_max_normalize(series: pd.Series) -> pd.Series:
+    """Min-Max 정규화: 구간 내 최솟값=0, 최댓값=100으로 스케일링한다.
+
+    "첫날=100" 방식(`normalize_series`)은 절대 변동폭이 작은 지표가 화면에서 거의 평평하게
+    보이는 문제가 있다. Min-Max는 각 시계열을 "자기 구간의 최저~최고 사이 상대 위치"로 바꿔서,
+    변동폭이 서로 다른 지표들도 같은 스케일(0~100)에서 등락 방향을 비교할 수 있게 한다.
+    """
+    s = series.dropna()
+    if s.empty:
+        return s
+    lo, hi = s.min(), s.max()
+    if hi == lo:
+        return pd.Series(50.0, index=s.index, name=s.name)
+    return (s - lo) / (hi - lo) * 100

@@ -17,17 +17,19 @@ flowchart TD
 ```
 """
 from __future__ import annotations
+import re
 from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 
 from stockindex.providers import krx_provider as krx
+from stockindex.providers import yfinance_provider as yfp
 from stockindex.core import deadcat
 from stockindex.dashboard.components.charts import (
     price_volume_chart, shorting_chart, investor_flow_chart,
 )
 
-# 자주 조회되는 대형주 프리셋 (필요시 직접 종목코드 입력 가능)
+# 자주 조회되는 국내(KRX) 대형주 프리셋 (필요시 직접 종목코드 입력 가능)
 PRESET_TICKERS = {
     "005930": "삼성전자", "005935": "삼성전자우", "000660": "SK하이닉스", "373220": "LG에너지솔루션",
     "207940": "삼성바이오로직스", "005380": "현대차", "005490": "POSCO홀딩스",
@@ -35,6 +37,19 @@ PRESET_TICKERS = {
     "000270": "기아", "068270": "셀트리온", "105560": "KB금융", "055550": "신한지주",
     "352820": "하이브",
 }
+
+# 해외(yfinance) 종목 프리셋. KRX 로그인이 필요한 공매도·투자자수급 신호는 데이터가 없어
+# 항상 "unknown"으로 표시되고, 시세·거래량 기반 신호만 판별에 사용된다.
+US_PRESET_TICKERS = {
+    "GOOGL": "구글(Alphabet)", "MMM": "3M",
+}
+
+_KR_CODE_RE = re.compile(r"^\d{6}$")
+
+
+def is_kr_ticker(ticker: str) -> bool:
+    """6자리 숫자 종목코드면 KRX 종목으로 간주한다 (그 외는 해외/yfinance 종목)."""
+    return bool(_KR_CODE_RE.match(ticker))
 
 # 신호 카드 표시용: deadcat.SignalLabel → (배지 문구, 색상)
 LABEL_STYLE = {
@@ -84,11 +99,21 @@ def _check_krx_login():
 
 @st.cache_data(ttl=1800)
 def _load_ticker_data(ticker: str, start: date, end: date):
-    """한 종목의 시세/공매도/투자자수급/종목명을 KRX에서 조회한다 (30분 캐시)."""
-    price_volume = krx.get_price_volume(ticker, start, end)
-    shorting = krx.get_shorting(ticker, start, end)
-    investor = krx.get_investor_trading(ticker, start, end)
-    name = krx.get_stock_name(ticker)
+    """한 종목의 시세/공매도/투자자수급/종목명을 조회한다 (30분 캐시).
+
+    6자리 숫자 코드면 KRX(pykrx)에서, 그 외(예: "GOOGL")는 yfinance에서 시세만 조회한다.
+    해외 종목은 공매도·투자자별 수급 데이터가 없으므로 빈 DataFrame을 반환한다.
+    """
+    if is_kr_ticker(ticker):
+        price_volume = krx.get_price_volume(ticker, start, end)
+        shorting = krx.get_shorting(ticker, start, end)
+        investor = krx.get_investor_trading(ticker, start, end)
+        name = krx.get_stock_name(ticker)
+    else:
+        price_volume = yfp.fetch_ohlcv(ticker, start, end)
+        shorting = pd.DataFrame()
+        investor = pd.DataFrame()
+        name = US_PRESET_TICKERS.get(ticker, ticker)
     return price_volume, shorting, investor, name
 
 
@@ -122,19 +147,25 @@ def render(dark: bool, us_series_map: dict[str, pd.Series]) -> None:
                 icon="🚫",
             )
 
+    market = st.radio("시장", ["🇰🇷 국내(KRX)", "🇺🇸 해외(미국)"], horizontal=True)
+    active_presets = PRESET_TICKERS if market == "🇰🇷 국내(KRX)" else US_PRESET_TICKERS
+
     col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
         preset = st.selectbox(
             "종목 선택",
-            list(PRESET_TICKERS.keys()),
-            format_func=lambda t: f"{PRESET_TICKERS[t]} ({t})",
+            list(active_presets.keys()),
+            format_func=lambda t: f"{active_presets[t]} ({t})",
         )
     with col2:
-        custom = st.text_input("직접 입력 (6자리 종목코드)", value="")
+        custom_label = "직접 입력 (6자리 종목코드)" if market == "🇰🇷 국내(KRX)" else "직접 입력 (예: AAPL)"
+        custom = st.text_input(custom_label, value="")
     with col3:
         days_back = st.number_input("조회 기간(일)", min_value=30, max_value=180, value=60, step=10)
 
     ticker = custom.strip() if custom.strip() else preset
+    if not is_kr_ticker(ticker) and market == "🇺🇸 해외(미국)":
+        st.caption("ℹ️ 해외 종목은 KRX 공매도·투자자별 수급 데이터가 없어 해당 신호는 '데이터 없음'으로 표시됩니다.")
     end = date.today()
     start = end - timedelta(days=int(days_back))
 
@@ -305,14 +336,17 @@ def _summary_rows(tickers: dict[str, str], start: date, end: date) -> list[dict]
 
 
 def _render_summary_table(us_series_map: dict[str, pd.Series]) -> None:
-    """페이지 맨 아래에 `PRESET_TICKERS` 전체 종목의 데드캣 판정 요약표를 그린다."""
+    """페이지 맨 아래에 국내·해외 프리셋 종목 전체의 데드캣 판정 요약표를 그린다."""
     st.markdown("---")
     st.subheader("📋 선택 가능 종목 요약")
-    st.caption("아래 종목들에 대해 동일한 기준(공매도·거래량·투자자 수급)으로 일괄 계산한 요약입니다. (글로벌 동조화 지표 제외 · 최근 60일 기준)")
+    st.caption(
+        "아래 종목들에 대해 동일한 기준(공매도·거래량·투자자 수급)으로 일괄 계산한 요약입니다. "
+        "(글로벌 동조화 지표 제외 · 최근 60일 기준 · 해외 종목은 공매도·투자자수급 데이터 없음)"
+    )
     end = date.today()
     start = end - timedelta(days=60)
     with st.spinner("전체 종목 요약 계산 중..."):
-        rows = _summary_rows(PRESET_TICKERS, start, end)
+        rows = _summary_rows({**PRESET_TICKERS, **US_PRESET_TICKERS}, start, end)
     if not rows:
         st.info("요약할 데이터가 없습니다.")
         return
