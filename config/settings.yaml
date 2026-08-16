@@ -17,3 +17,12 @@ collect:
   retry_wait_seconds: 5
 alert:
   suppress_duplicate_days: 1   # 동일 임계치 재발송 억제 일수
+screener:
+  min_days: 3           # DB에 남길 최소 연속 동반매수/매도 일수
+  notify_min_days: 5    # 이 이상이면 일일 다이제스트 메일 발송
+  notify: default
+  # 외국인 지분율 스크리너 (연속매수 횟수가 아니라 실제 보유 비중 변화를 봄)
+  ownership_lookback_days: 30
+  ownership_steady_min_change_pct: 0.5      # 30일간 지분율 +0.5%p 이상 & 상승일 비율 충족 시 "지속 증가"
+  ownership_steady_min_up_ratio: 0.6
+  ownership_spike_min_daily_change_pct: 0.3 # 하루 지분율 +0.3%p 이상이면 "일시 급증"

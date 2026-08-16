@@ -14,7 +14,9 @@ flowchart TD
         S2["2. PortfolioProvider — 국민연금 자산배분 스냅샷 저장"]
         S3["3. run_alerts() — thresholds.yaml 평가, 신규 도달만 필터"]
         S4["4. send_alert() — 도달 항목 있으면 HTML 메일 발송"]
-        S1 --> S2 --> S3 --> S4
+        S5["5. screen_kospi200() — 외국인·기관 동반매수/매도 연속일수 스캔 → 저장 + 다이제스트 메일"]
+        S6["6. screen_ownership_kospi200() — 외국인 지분율 지속증가/일시급증 스캔 → 저장"]
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6
     end
     main --> Dash["대시보드(app.py)가 다음 조회 시 새 데이터 표시"]
     main --> Mail["수신자 메일함 (도달 시에만)"]
@@ -33,7 +35,8 @@ import argparse
 from stockindex.config.loader import load_settings, load_thresholds
 from stockindex.core.collector import collect_all
 from stockindex.core.alerts import run_alerts
-from stockindex.notify.mailer import send_alert
+from stockindex.core.screener import screen_kospi200, screen_ownership_kospi200
+from stockindex.notify.mailer import send_alert, send_flow_screen_digest
 from stockindex.providers.portfolio_provider import PortfolioProvider
 from stockindex.storage import db as _db
 
@@ -79,6 +82,43 @@ def main():
         send_alert(triggered)
     elif triggered and args.dry_run:
         print("[dry-run] Skipping email send")
+
+    # 5. KOSPI200 investor flow screener (외국인·기관 동반매수/매도 연속일수)
+    screener_cfg = settings.screener
+    run = screen_kospi200(min_days=screener_cfg.min_days)
+    _db.init_db(db_path)
+    _db.save_screen_run(db_path, today, run.universe_size, run.is_full_kospi200)
+    if not run.is_full_kospi200 and run.universe_size:
+        print(f"\n[screener] ⚠️ KOSPI200 정식 API 조회 실패 — 대형주 근사 리스트({run.universe_size}종목)로 대체")
+    if run.results:
+        _db.save_investor_flow_screen(db_path, today, run.results)
+        print(f"[screener] {len(run.results)}/{run.universe_size} stock(s) with >= {screener_cfg.min_days}d streak")
+        if not args.dry_run:
+            recipients, _ = load_thresholds()
+            send_flow_screen_digest(
+                run.results, screener_cfg.notify_min_days,
+                recipients.get(screener_cfg.notify, []),
+            )
+    else:
+        print("\n[screener] no results (KRX 로그인 미설정이거나 조건 충족 종목 없음)")
+
+    # 6. KOSPI200 foreign ownership screener (지분율 지속증가/일시급증)
+    own_run = screen_ownership_kospi200(
+        lookback_days=screener_cfg.ownership_lookback_days,
+        steady_min_change=screener_cfg.ownership_steady_min_change_pct,
+        steady_min_up_ratio=screener_cfg.ownership_steady_min_up_ratio,
+        spike_min_daily_change=screener_cfg.ownership_spike_min_daily_change_pct,
+    )
+    _db.save_ownership_screen_run(db_path, today, own_run.universe_size, own_run.is_full_kospi200)
+    if not own_run.is_full_kospi200 and own_run.universe_size:
+        print(f"\n[ownership] ⚠️ KOSPI200 정식 API 조회 실패 — 대형주 근사 리스트({own_run.universe_size}종목)로 대체")
+    if own_run.results:
+        _db.save_ownership_screen(db_path, today, own_run.results)
+        steady_n = sum(1 for r in own_run.results if r.is_steady_increase)
+        spike_n = sum(1 for r in own_run.results if r.is_spike)
+        print(f"[ownership] {len(own_run.results)}/{own_run.universe_size} stock(s) — 지속증가 {steady_n}, 급증 {spike_n}")
+    else:
+        print("\n[ownership] no results (KRX 로그인 미설정이거나 조건 충족 종목 없음)")
 
     print("\n=== Done ===")
 

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: 'Noto Sans KR', Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+  .container { max-width: 700px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  h2 { color: #2980b9; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 14px; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  th { background: #2c3e50; color: #fff; padding: 10px 14px; text-align: left; font-size: 14px; }
+  td { padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 14px; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .buy { color: #27ae60; font-weight: bold; }
+  .sell { color: #c0392b; font-weight: bold; }
+  .cta { display: inline-block; margin-top: 20px; padding: 12px 28px; background: #2980b9; color: #fff; text-decoration: none; border-radius: 6px; font-size: 15px; }
+  .footer { margin-top: 24px; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>🦅 외국인·기관 수급 스크리너</h2>
+  <div class="subtitle">KOSPI200 중 {{ results|length }}개 종목이 {{ min_days }}일 이상 연속 수급 패턴을 보이고 있습니다.</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>종목</th>
+        <th>동반매수</th>
+        <th>동반매도</th>
+        <th>외국인단독매수</th>
+        <th>현재가</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+      <tr>
+        <td>{{ r.name }} ({{ r.ticker }})</td>
+        <td>{% if r.twin_buy_streak >= min_days %}<span class="buy">{{ r.twin_buy_streak }}일</span>{% else %}-{% endif %}</td>
+        <td>{% if r.twin_sell_streak >= min_days %}<span class="sell">{{ r.twin_sell_streak }}일</span>{% else %}-{% endif %}</td>
+        <td>{% if r.foreign_only_buy_streak >= min_days %}<span class="buy">{{ r.foreign_only_buy_streak }}일</span>{% else %}-{% endif %}</td>
+        <td>{{ "{:,.0f}".format(r.latest_close) if r.latest_close else "-" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <a href="{{ site_url }}" class="cta">대시보드 바로가기 →</a>
+
+  <div class="footer">
+    본 메일은 자동 발송입니다. 투자 조언이 아닌 정보 제공 목적입니다.<br>
+    대시보드: <a href="{{ site_url }}">{{ site_url }}</a>
+  </div>
+</div>
+</body>
+</html>

@@ -23,6 +23,40 @@ def render_alert_html(triggered: list[dict], site_url: str) -> str:
     return tmpl.render(triggered=triggered, site_url=site_url)
 
 
+def render_flow_screen_html(results: list, min_days: int, site_url: str) -> str:
+    """`templates/flow_screen.html.j2`에 스크리너 결과(`core.screener.FlowScreenResult` 목록)를 채워 렌더링한다."""
+    env = Environment(loader=FileSystemLoader(str(_TMPL_DIR)), autoescape=True)
+    tmpl = env.get_template("flow_screen.html.j2")
+    return tmpl.render(results=results, min_days=min_days, site_url=site_url)
+
+
+def _send_html_mail(subject: str, html: str, recipients: set[str]) -> None:
+    """공통 SMTP 발송 경로. `SMTP_PASSWORD` 미설정 시 발송 없이 수신자만 출력한다."""
+    if not recipients:
+        return
+    settings = load_settings()
+    smtp_cfg = settings.smtp
+
+    password = os.environ.get(smtp_cfg.password_env, "")
+    if not password:
+        print(f"[mailer] SMTP password env '{smtp_cfg.password_env}' not set — skipping mail")
+        print(f"[mailer] Would send to: {recipients}")
+        return
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = smtp_cfg.from_
+    msg["To"] = ", ".join(sorted(recipients))
+    msg.attach(MIMEText(html, "html", "utf-8"))
+
+    with smtplib.SMTP(smtp_cfg.host, smtp_cfg.port) as server:
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_cfg.user, password)
+        server.sendmail(smtp_cfg.from_, list(recipients), msg.as_string())
+    print(f"[mailer] Sent mail to {recipients}")
+
+
 def send_alert(triggered: list[dict]) -> None:
     """`run_alerts()`가 반환한 도달 항목들을 모아 해당 항목의 수신자 전원에게 한 통으로 보낸다.
 
@@ -33,34 +67,30 @@ def send_alert(triggered: list[dict]) -> None:
     if not triggered:
         return
     settings = load_settings()
-    smtp_cfg = settings.smtp
-    site_url = settings.site_url
 
-    # Collect all unique recipients
     all_recipients: set[str] = set()
     for item in triggered:
         all_recipients.update(item.get("recipients", []))
-    if not all_recipients:
-        return
 
-    html = render_alert_html(triggered, site_url)
+    html = render_alert_html(triggered, settings.site_url)
     subject = f"[주식지표 알림] {len(triggered)}개 임계치 도달"
+    _send_html_mail(subject, html, all_recipients)
 
-    password = os.environ.get(smtp_cfg.password_env, "")
-    if not password:
-        print(f"[mailer] SMTP password env '{smtp_cfg.password_env}' not set — skipping mail")
-        print(f"[mailer] Would send to: {all_recipients}")
+
+def send_flow_screen_digest(results: list, min_days: int, recipients: list[str]) -> None:
+    """`core.screener.screen_kospi200()` 결과 중 `min_days` 이상인 종목을 한 통으로 발송한다.
+
+    Args:
+        results: `screen_kospi200()`의 전체 반환값 (min_days 미달 종목도 섞여 있을 수 있음 —
+                 여기서 다시 걸러 화면 목록을 좁힌다).
+    """
+    notable = [
+        r for r in results
+        if max(r.twin_buy_streak, r.twin_sell_streak, r.foreign_only_buy_streak) >= min_days
+    ]
+    if not notable:
         return
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = smtp_cfg.from_
-    msg["To"] = ", ".join(sorted(all_recipients))
-    msg.attach(MIMEText(html, "html", "utf-8"))
-
-    with smtplib.SMTP(smtp_cfg.host, smtp_cfg.port) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(smtp_cfg.user, password)
-        server.sendmail(smtp_cfg.from_, list(all_recipients), msg.as_string())
-    print(f"[mailer] Sent alert to {all_recipients}")
+    settings = load_settings()
+    html = render_flow_screen_html(notable, min_days, settings.site_url)
+    subject = f"[수급 스크리너] {len(notable)}개 종목 {min_days}일 이상 연속 수급"
+    _send_html_mail(subject, html, set(recipients))

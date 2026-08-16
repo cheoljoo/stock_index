@@ -43,7 +43,9 @@ from stockindex.core.trend import group_by_trend, TrendLabel
 from stockindex.storage import db as _db
 from stockindex.providers.portfolio_provider import PortfolioProvider
 from stockindex.dashboard.components.charts import line_chart, portfolio_bar, metric_cards
-from stockindex.dashboard.components import deadcat_view, uptrend_view, semiconductor_view, roic_view, inflation_view
+from stockindex.dashboard.components import (
+    deadcat_view, uptrend_view, semiconductor_view, roic_view, inflation_view, investor_flow_view,
+)
 
 TREND_LABELS: dict[TrendLabel, str] = {
     "up": "📈 상향",
@@ -74,7 +76,10 @@ def main():
     st.sidebar.markdown("---")
 
     page = st.sidebar.radio(
-        "메뉴", ["📊 주식 지표", "🐈‍⬛ 데드캣 바운스 분석", "📈 상승 추세 전환 분석", "🔬 반도체 산업 분석", "🏆 ROIC 분석", "💵 미국 물가·환율"],
+        "메뉴", [
+            "📊 주식 지표", "🐈‍⬛ 데드캣 바운스 분석", "📈 상승 추세 전환 분석", "🔬 반도체 산업 분석",
+            "🏆 ROIC 분석", "💵 미국 물가·환율", "🦅 외국인·기관 수급 스크리너",
+        ],
     )
     st.sidebar.markdown("---")
 
@@ -124,6 +129,10 @@ def main():
 
     if page == "🏆 ROIC 분석":
         roic_view.render(dark=dark)
+        return
+
+    if page == "🦅 외국인·기관 수급 스크리너":
+        investor_flow_view.render(dark=dark)
         return
 
     if page == "💵 미국 물가·환율":

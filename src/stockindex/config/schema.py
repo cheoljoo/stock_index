@@ -75,6 +75,19 @@ class AlertConfig(BaseModel):
     suppress_duplicate_days: int = 1
 
 
+class ScreenerConfig(BaseModel):
+    """KOSPI200 외국인·기관 수급 스크리너(`core/screener.py`) 설정."""
+    min_days: int = 3           # DB에 남길 최소 연속일수
+    notify_min_days: int = 5    # 이 이상이면 일일 다이제스트 메일 발송 대상
+    notify: str = "default"
+
+    # ── 외국인 지분율 스크리너(twin-buy 연속일수와 별개) ──────────────────
+    ownership_lookback_days: int = 30
+    ownership_steady_min_change_pct: float = 0.5     # 지속 증가로 볼 최소 전체 변화폭(%p)
+    ownership_steady_min_up_ratio: float = 0.6       # 지속 증가로 볼 최소 상승일 비율(0~1)
+    ownership_spike_min_daily_change_pct: float = 0.3  # 일시 급증으로 볼 최소 하루 변화폭(%p)
+
+
 class Settings(BaseModel):
     site_url: str = "http://localhost:8501"
     storage: StorageConfig = StorageConfig()
@@ -82,3 +95,4 @@ class Settings(BaseModel):
     schedule: ScheduleConfig = ScheduleConfig()
     collect: CollectConfig = CollectConfig()
     alert: AlertConfig = AlertConfig()
+    screener: ScreenerConfig = ScreenerConfig()

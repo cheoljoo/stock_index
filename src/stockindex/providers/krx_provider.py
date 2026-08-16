@@ -1,6 +1,6 @@
 from __future__ import annotations
 import os
-from datetime import date
+from datetime import date, timedelta
 import pandas as pd
 from tenacity import retry, stop_after_attempt, wait_fixed
 
@@ -102,6 +102,56 @@ def get_shorting(ticker: str, start: date, end: date) -> pd.DataFrame:
         if ratio_col:
             out = out.join(bal_df[[ratio_col]].rename(columns={ratio_col: "short_balance_ratio"}), how="outer")
     return out.sort_index()
+
+
+@retry(stop=stop_after_attempt(2), wait=wait_fixed(3))
+def get_kospi200_tickers(as_of: date) -> dict[str, str]:
+    """KOSPI200 구성종목 {ticker: name}. 로그인 불필요.
+
+    `as_of`가 휴장일이면 pykrx가 빈 결과를 줄 수 있어, 최근 10일 내에서
+    데이터가 나오는 가장 최근 영업일로 자동 보정한다. 실패 시 빈 dict 반환
+    (호출부는 이 경우 PRESET_TICKERS 등으로 폴백해야 한다).
+    """
+    d = as_of
+    for _ in range(10):
+        try:
+            tickers = _krx.get_index_portfolio_deposit_file(d.strftime("%Y%m%d"), "1028")
+        except Exception:
+            tickers = []
+        if tickers:
+            return {t: get_stock_name(t) for t in tickers}
+        d -= timedelta(days=1)
+    return {}
+
+
+def get_foreign_ownership(ticker: str, start: date, end: date) -> pd.DataFrame:
+    """일별 외국인 보유 현황(지분율 추이). KRX 로그인 필요.
+
+    "며칠 연속 순매수했는지"가 아니라 "실제 보유 지분율이 얼마나 늘었는지"를 보려면
+    이 데이터가 필요하다 — `get_investor_trading`의 순매수 대금은 거래량 기준이라
+    지분율 변화와 항상 비례하지 않는다(예: 대량 블록딜, 유상증자로 상장주식수 자체가
+    바뀌는 경우 등).
+
+    실패 시 빈 DataFrame. columns: listed_shares(상장주식수), foreign_shares(보유수량),
+    foreign_ratio(지분율 %), limit_shares(한도수량), limit_exhaustion(한도소진률 %)
+    """
+    if not krx_authenticated():
+        return pd.DataFrame()
+    try:
+        df = _krx.get_exhaustion_rates_of_foreign_investment_by_date(
+            start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), ticker
+        )
+    except Exception:
+        return pd.DataFrame()
+    if df is None or df.empty:
+        return pd.DataFrame()
+    df = df.copy()
+    df.index = pd.to_datetime(df.index).normalize()
+    df = df.rename(columns={
+        "상장주식수": "listed_shares", "보유수량": "foreign_shares",
+        "지분율": "foreign_ratio", "한도수량": "limit_shares", "한도소진률": "limit_exhaustion",
+    })
+    return df.sort_index()
 
 
 def get_investor_trading(ticker: str, start: date, end: date) -> pd.DataFrame:
