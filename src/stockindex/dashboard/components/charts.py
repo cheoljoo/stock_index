@@ -107,6 +107,7 @@ def portfolio_bar(
         labels={"weight_pct": "비중 (%)", "snapshot_date": "날짜", "asset_class": "자산군"},
         template=layout["template"],
     )
+    fig.update_xaxes(type="category")   # 기준일 간격이 들쭉날쭉(연말·월말)해도 막대가 가늘어지지 않게
     fig.update_layout(
         margin=dict(l=40, r=20, t=50, b=40),
         plot_bgcolor=layout["plot_bgcolor"],

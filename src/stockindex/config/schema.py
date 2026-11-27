@@ -80,6 +80,7 @@ class ScreenerConfig(BaseModel):
     min_days: int = 3           # DB에 남길 최소 연속일수
     notify_min_days: int = 5    # 이 이상이면 일일 다이제스트 메일 발송 대상
     notify: str = "default"
+    foreign_start_days: int = 3   # 외국인 순매수가 같은 방향으로 이만큼 이어지면 흐름 시작으로 본다
 
     # ── 외국인 지분율 스크리너(twin-buy 연속일수와 별개) ──────────────────
     ownership_lookback_days: int = 30

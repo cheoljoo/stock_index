@@ -11,12 +11,14 @@ flowchart TD
     subgraph main["run_daily.py main()"]
         direction TB
         S1["1. collect_all() — 전 지표 수집 → Parquet/SQLite 저장"]
-        S2["2. PortfolioProvider — 국민연금 자산배분 스냅샷 저장"]
+        S2["2. (1에 포함) 국민연금 자산배분을 공식 자료에서 받아 저장"]
         S3["3. run_alerts() — thresholds.yaml 평가, 신규 도달만 필터"]
         S4["4. send_alert() — 도달 항목 있으면 HTML 메일 발송"]
         S5["5. screen_kospi200() — 외국인·기관 동반매수/매도 연속일수 스캔 → 저장 + 다이제스트 메일"]
         S6["6. screen_ownership_kospi200() — 외국인 지분율 지속증가/일시급증 스캔 → 저장"]
-        S1 --> S2 --> S3 --> S4 --> S5 --> S6
+        S7["7. foreign_flow — 외국인 매수/매도 시작 판정 (KOSPI 전체 + 캐시된 KOSPI200)"]
+        S8["8. preferred — 삼성전자 보통주·우선주 가격·배당 갱신"]
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8
     end
     main --> Dash["대시보드(app.py)가 다음 조회 시 새 데이터 표시"]
     main --> Mail["수신자 메일함 (도달 시에만)"]
@@ -37,12 +39,12 @@ from datetime import date, datetime, timedelta
 import argparse
 from stockindex.config.loader import load_settings, load_thresholds
 from stockindex.core.collector import collect_all
+from stockindex.core import foreign_flow, preferred
 from stockindex.core.alerts import run_alerts
 from stockindex.core.screener import screen_kospi200, screen_ownership_kospi200
 from stockindex.notify.mailer import send_alert, send_flow_screen_digest
 from stockindex.notify.report import send_report
-from stockindex.providers import krx_openapi
-from stockindex.providers.portfolio_provider import PortfolioProvider
+from stockindex.providers import krx_openapi, krx_provider as krx
 from stockindex.storage import db as _db
 
 
@@ -130,13 +132,7 @@ def _pipeline(args):
     series_map = collect_all(keys=args.keys)
     print(f"\n[done] Collected {len(series_map)} indicators")
 
-    # 2. Portfolio snapshots
-    prov = PortfolioProvider()
-    hist = prov.get_allocation_history("nps")
-    if hist:
-        _db.init_db(db_path)
-        _db.save_portfolio_snapshot(db_path, "nps", today, hist)
-        print(f"[portfolio] saved {len(hist)} NPS rows")
+    # 2. 국민연금 자산배분은 1단계의 portfolio provider가 받아 DB에 저장한다
 
     # 3. Alert evaluation
     recipients, thresholds_cfg = load_thresholds()
@@ -197,6 +193,26 @@ def _pipeline(args):
         print(f"[ownership] {len(own_run.results)}/{own_run.universe_size} stock(s) — 지속증가 {steady_n}, 급증 {spike_n}")
     else:
         print("\n[ownership] no results (KRX 로그인 미설정이거나 조건 충족 종목 없음)")
+
+    # 7. 외국인 매매 시작점 — 종목은 위 스크리너가 받은 캐시를 쓰고, 시장 전체만 한 번 더 받는다
+    min_days = screener_cfg.foreign_start_days
+    krx.get_investor_trading(foreign_flow.MARKET, today - timedelta(days=365), today)
+    market = foreign_flow.current_state(foreign_flow.cached_net(foreign_flow.MARKET), min_days)
+    if market:
+        print(f"\n[foreign-flow] KOSPI {market.as_of}: {market.state}"
+              + (f" ({market.start}부터 {market.days}거래일, {market.total / 1e8:+,.0f}억)" if market.start else ""))
+    rows = foreign_flow.scan_cached(krx.cached_kospi200(), min_days)
+    new = [r for r in rows if r["new"]]
+    print(f"[foreign-flow] {len(rows)}종목 중 새로 시작: 매수 {sum(r['state'] == foreign_flow.BUYING for r in new)}, "
+          f"매도 {sum(r['state'] == foreign_flow.SELLING for r in new)}")
+
+    # 8. 삼성전자 보통주·우선주 — 가격·배당 갱신
+    try:
+        prices = preferred.refresh()
+        s = preferred.current_signal(prices, 2)
+        print(f"\n[samsung] {s['date']} 가격차이비율 {s['ratio']:.1f}% (2년 분위 {s['q25']:.1f}~{s['q75']:.1f}%): {s['cheap']}")
+    except Exception as e:
+        print(f"\n[samsung] ⚠ 가격·배당 갱신 실패 (저장분 유지): {e}")
 
     print("\n=== Done ===")
 

@@ -9,6 +9,8 @@
 - **추세 자동 분류**: 상향 / 하향 / 울퉁불퉁 / 일정 — 같은 방향 지표끼리 모아 비교
 - **단계별 임계치 알림**: `config/thresholds.yaml`에서 단계별 조건 설정, 도달 시 HTML 메일 발송
 - **대시보드**: Streamlit + Plotly 인터랙티브 차트
+- **외국인 매매 시작점**: 외국인이 모으기·던지기 시작한 날과 누적 순매수 추이
+- **삼성_본주.우선주_분석**: 보통주·우선주를 갈아타는 전략과 단순 보유 비교
 - **국부펀드 포트폴리오**: 국민연금 자산배분 변화 추이 (표 + 스택 차트)
 - **데드캣 바운스 분석**: 공매도·거래량·투자자별(외국인/기관/개인) 수급 + 글로벌 동조화 기준으로
   일시적 기술적 반등(데드캣 바운스)인지 진짜 추세 전환인지 판별하고, 어제 종가 기준 결론과 근거를 표시
@@ -128,6 +130,40 @@ cp .env.example .env   # API 키 설정
 python scripts/run_daily.py --report-only            # 수집 없이 마지막 실행 결과를 다시 보내기
 python scripts/run_daily.py --report-only --dry-run  # logs/last_report.html 만 만들기
 ```
+
+### 국민연금 자산배분 자료 검사
+
+기금운용본부 화면과 공공데이터포털 CSV에서 받은 값은 다음 검사를 통과해야 저장합니다 (`providers/nps_check.py`).
+
+| 검사 | 기준 |
+|---|---|
+| 형식 | 기준월·단위·열 이름·자산군 6종이 있고, 자산군 합계가 총액과 1% 이내 |
+| 두 출처 | 같은 기준일의 비중 차이 0.3%p, 총액 1% 이내 |
+| 과거 값 | 저장한 값과 비중 0.3%p, 총액 1% 이내 |
+| 급변 | 직전 기준일 대비 비중 (5+경과 개월)%p, 총액 (15+3×개월)% 이내 |
+| 오래된 자료 | 최신 기준일이 120일 이내 |
+
+걸리면 값을 바꾸지 않고, 실행 로그·결과 메일 제목에 **코드 점검 필요**를 표시하며 `logs/data_check.log`에 이력을, `logs/nps_rejected/`에 원문을 남깁니다.
+
+```bash
+python scripts/check_nps.py            # 검사만
+python scripts/check_nps.py --accept   # 바뀐 값이 맞다고 확인한 뒤 반영
+```
+
+### 외국인 매매 시작점
+
+외국인이 모으기·던지기 시작한 시점을 찾습니다 ([hs](https://github.com/cheoljoo/hs)의 방법). 순매수가 같은 방향으로 `screener.foreign_start_days`(기본 3)거래일 이어지면 흐름으로 보고, 첫날을 시작일로 합니다. N번째 날에야 알 수 있습니다.
+
+- **입력**: KRX 외국인 순매수 거래대금 (KOSPI 시장 전체 1년, KOSPI200 종목은 수급 스크리너가 받은 캐시 — 도입 시점에는 약 30일이며 매일 늘어납니다)
+- **출력**: 현재 상태(모으는 중/던지는 중), 시작일, 누적 순매수 추이 — 대시보드 "🌏 외국인 매매 시작점"과 일일 결과 메일
+
+### 삼성_본주.우선주_분석
+
+보통주와 우선주 가운데 언제 어느 쪽이 유리한지 봅니다 ([stock_samsung](https://github.com/cheoljoo/stock_samsung)의 방법).
+
+- **입력**: 두 주식의 과거 가격과 배당(Yahoo Finance, 우선주 자료가 있는 2005-09부터), 비교 window(2·3·5년)
+- **출력**: 갈아타는 전략(기본·반대)과 단순 보유의 수익, 매매 횟수, 배당 기여, 매매 비용, 현재 신호
+- 원본과 달리 window는 달력 기간이고, 배당은 보유한 주식의 것을 쓰며, 배당 조정 전 가격에 매매 비용(기본 0.2%)을 뺍니다.
 
 ### KRX 데이터 경로 (혼합)
 
@@ -327,7 +363,7 @@ class MyProvider(Provider):
 | [FRED (Federal Reserve)](https://fred.stlouisfed.org) | 미국 금리·거시지표 | Public domain, FRED ToS 준수 |
 | [한국은행 ECOS](https://ecos.bok.or.kr/api/) | 한국 금리·거시지표 | 공공데이터 이용허락 |
 | [CoinGecko](https://www.coingecko.com/en/api) | 코인 가격 | CoinGecko ToS 준수 |
-| [국민연금 공시](https://fund.nps.or.kr) | 포트폴리오 | 공개 공시 데이터 |
+| [국민연금 기금운용본부](https://fund.nps.or.kr) · [공공데이터포털](https://www.data.go.kr/data/15106894/fileData.do) | 포트폴리오(자산배분 비중) | 인증키 불필요. 월말 값은 잠정치 |
 | [KRX 정보데이터시스템](https://data.krx.co.kr) ([pykrx](https://github.com/sharebook-kr/pykrx)) | 공매도·투자자별 수급 (데드캣·상승추세 분석) | KRX 이용약관 준수, 무료 회원 로그인 필요 |
 
 > **면책조항**: 본 프로젝트는 투자 조언을 제공하지 않습니다. 데이터 정확성을 보장하지 않으며, 투자 결정에 대한 책임은 사용자에게 있습니다.

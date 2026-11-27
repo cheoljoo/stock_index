@@ -21,6 +21,7 @@ screener:
   min_days: 3           # DB에 남길 최소 연속 동반매수/매도 일수
   notify_min_days: 5    # 이 이상이면 일일 다이제스트 메일 발송
   notify: default
+  foreign_start_days: 3 # 외국인이 N거래일 연속 순매수/순매도하면 "시작"으로 본다
   # 외국인 지분율 스크리너 (연속매수 횟수가 아니라 실제 보유 비중 변화를 봄)
   ownership_lookback_days: 30
   ownership_steady_min_change_pct: 0.5      # 30일간 지분율 +0.5%p 이상 & 상승일 비율 충족 시 "지속 증가"

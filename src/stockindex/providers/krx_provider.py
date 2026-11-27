@@ -324,6 +324,16 @@ def _cached_fetch(kind: str, ticker: str, start: date, end: date, fetch) -> pd.D
     return _slice(merged, start, end)
 
 
+def cached_investor_trading(ticker: str) -> pd.DataFrame:
+    """받아 둔 투자자별 순매수 전체 (KRX를 호출하지 않는다). 없으면 빈 DataFrame."""
+    return _load_cached("investor_trading", ticker)[0]
+
+
+def cached_kospi200() -> dict[str, str]:
+    """마지막으로 받아 둔 KOSPI200 {코드: 종목명} (KRX를 호출하지 않는다)."""
+    return _read_json(_cache_dir() / "kospi200.json", {}).get("tickers", {})
+
+
 # ── 종목명·구성종목 ──────────────────────────────────────────────────────────
 
 def _names_file() -> Path:

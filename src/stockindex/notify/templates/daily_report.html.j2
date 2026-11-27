@@ -53,6 +53,17 @@
     </table>{% else %}<div class="muted">없음</div>{% endif %}
   </div>
 
+  {% if foreign %}
+  <div class="card">
+    <h2>외국인 매매 시작점 ({{ foreign.min_days }}거래일 연속 기준)</h2>
+    {% if foreign.market %}<div>KOSPI 전체: <b>{{ foreign.market.state }}</b>{% if foreign.market.start %} · {{ foreign.market.start }}부터 {{ foreign.market.days }}거래일, {{ '{:+,.0f}'.format(foreign.market.total / 1e8) }}억{% endif %} <span class="muted">({{ foreign.market.as_of }})</span></div>{% endif %}
+    <div class="muted">KOSPI200 {{ foreign.count }}종목 · 기준일 {{ foreign.as_of }}에 새로 시작</div>
+    {% for title, items, cls in [('매수 시작', foreign.buy, 'up'), ('매도 시작', foreign.sell, 'down')] %}
+    <div><span class="{{ cls }}">{{ title }} {{ items|length }}</span>: {% for r in items[:15] %}{{ r.name }} ({{ '{:+,.0f}'.format(r.total / 1e8) }}억){{ ', ' if not loop.last }}{% else %}없음{% endfor %}{% if items|length > 15 %} 외 {{ items|length - 15 }}{% endif %}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if flow %}
   <div class="card">
     <h2>외국인·기관 수급 스크리너: {{ flow.count }}종목{% if flow.prev_date %} (이전 {{ flow.prev_count }}){% endif %}</h2>

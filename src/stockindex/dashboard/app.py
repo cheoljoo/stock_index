@@ -45,10 +45,11 @@ from stockindex.config.loader import (
 from stockindex.core.collector import load_all_series
 from stockindex.core.trend import group_by_trend, TrendLabel
 from stockindex.storage import db as _db
-from stockindex.providers.portfolio_provider import PortfolioProvider
+from stockindex.providers.portfolio_provider import DATASET_URL, SITE_URL, PortfolioProvider
 from stockindex.dashboard.components.charts import line_chart, portfolio_bar, metric_cards
 from stockindex.dashboard.components import (
     deadcat_view, uptrend_view, semiconductor_view, roic_view, inflation_view, investor_flow_view,
+    foreign_flow_view, samsung_view,
 )
 
 TREND_LABELS: dict[TrendLabel, str] = {
@@ -82,7 +83,8 @@ def main():
     page = st.sidebar.radio(
         "메뉴", [
             "📊 주식 지표", "🐈‍⬛ 데드캣 바운스 분석", "📈 상승 추세 전환 분석", "🔬 반도체 산업 분석",
-            "🏆 ROIC 분석", "💵 미국 물가·환율", "🦅 외국인·기관 수급 스크리너",
+            "🏆 ROIC 분석", "💵 미국 물가·환율", "🦅 외국인·기관 수급 스크리너", "🌏 외국인 매매 시작점",
+            "⚖️ 삼성_본주.우선주_분석",
         ],
     )
     st.sidebar.markdown("---")
@@ -137,6 +139,14 @@ def main():
 
     if page == "🦅 외국인·기관 수급 스크리너":
         investor_flow_view.render(dark=dark)
+        return
+
+    if page == "🌏 외국인 매매 시작점":
+        foreign_flow_view.render(dark=dark)
+        return
+
+    if page == "⚖️ 삼성_본주.우선주_분석":
+        samsung_view.render(dark=dark)
         return
 
     if page == "💵 미국 물가·환율":
@@ -220,8 +230,9 @@ def main():
         else:
             st.info("포트폴리오 데이터 없음.")
         st.markdown(
-            "**출처**: [국민연금공단 기금운용현황](https://fund.nps.or.kr)  \n"
-            "데이터는 분기별 공시 기준입니다."
+            f"**출처**: [국민연금 기금운용본부 포트폴리오 현황]({SITE_URL}) · "
+            f"[공공데이터포털 기금 포트폴리오 현황]({DATASET_URL})  \n"
+            "과거는 연말, 최근은 월말 기준이며 월말 값은 잠정치입니다. 비중은 전체 자산 대비입니다."
         )
 
     elif view == "알림 현황":

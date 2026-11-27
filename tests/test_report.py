@@ -44,5 +44,4 @@ def test_problem_lines_name_the_indicator():
 """
     assert report._problem_lines(log) == [
         "nps_portfolio: -> empty (no data returned)",
-        "[mailer] SMTP password env 'SMTP_PASSWORD' not set — skipping mail",
     ]

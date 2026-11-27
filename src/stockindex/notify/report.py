@@ -25,6 +25,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from stockindex.config.loader import load_indicators, load_settings
+from stockindex.core import foreign_flow
 from stockindex.core.collector import load_all_series
 from stockindex.notify import mailer
 from stockindex.providers import krx_openapi, krx_provider
@@ -33,6 +34,11 @@ _ROOT = Path(__file__).resolve().parents[3]
 _TMPL_DIR = Path(__file__).parent / "templates"
 _SECRET_NAME = re.compile(r"PASS|PW|KEY|TOKEN|SECRET|_ID$|USERNAME|SENDER")
 _PROBLEM = re.compile(r"⚠|⛔|Traceback|Error|ERROR|실패|FAIL|empty \(no data|not set")
+
+
+# 확인 목록에서 뺄 줄. 메일 비밀번호가 없으면 이 보고 메일 자체를 보낼 수 없으므로,
+# 보고서에 이 줄이 남는 것은 지난 로그를 다시 보낼 때뿐이다.
+_IGNORED = ("[mailer] SMTP password env", "[mailer] Would send to")
 
 
 def mask_secrets(text: str) -> str:
@@ -100,9 +106,22 @@ def _problem_lines(log_text: str) -> list[str]:
         m = re.match(r"\[collector\] fetching (\S+)", line)
         if m:
             key = m.group(1)
-        elif _PROBLEM.search(line):
+        elif _PROBLEM.search(line) and not line.startswith(_IGNORED):
             found.append(f"{key}: {line}" if key and line.startswith("->") else line)
     return list(dict.fromkeys(found))[:30]
+
+
+def _foreign_flow(min_days: int) -> dict | None:
+    """외국인 매매 시작점: KOSPI 전체 상태와 가장 최근 거래일에 새로 시작한 종목."""
+    market = foreign_flow.current_state(foreign_flow.cached_net(foreign_flow.MARKET), min_days)
+    rows = foreign_flow.scan_cached(krx_provider.cached_kospi200(), min_days)
+    if not market and not rows:
+        return None
+    latest = max((r["as_of"] for r in rows), default=None)
+    new = sorted((r for r in rows if r["new"] and r["as_of"] == latest), key=lambda r: abs(r["total"]), reverse=True)
+    return {"market": market, "as_of": latest, "min_days": min_days, "count": len(rows),
+            "buy": [r for r in new if r["state"] == foreign_flow.BUYING],
+            "sell": [r for r in new if r["state"] == foreign_flow.SELLING]}
 
 
 def _git(*args: str) -> str:
@@ -156,6 +175,7 @@ def build_context(log_text: str, ok: bool, elapsed: float | None) -> dict:
             db, "SELECT indicator, level, value FROM alert_history WHERE triggered_date = ?",
             (date.today().isoformat(),))],
         "flow": flow,
+        "foreign": _foreign_flow(settings.screener.foreign_start_days),
         "own": own,
         "problems": _problem_lines(log_text),
         "krx_calls": _calls(cache / "calls_today.json"),
@@ -201,6 +221,8 @@ def send_report(log_text: str, ok: bool = True, elapsed: float | None = None, se
 
     msg = MIMEMultipart("mixed")
     status = "성공" if ok else "실패"
+    if any("코드 점검 필요" in line for line in ctx["problems"]):
+        status += " · 코드 점검 필요"
     msg["Subject"] = (f"[stock_index] {date.today()} 일일 수집 {status} — 알림 {len(ctx['alerts'])}건"
                       + (f", 확인 필요 {len(ctx['problems'])}줄" if ctx["problems"] else ""))
     msg["From"] = settings.smtp.from_
