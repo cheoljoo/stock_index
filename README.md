@@ -118,6 +118,26 @@ cp .env.example .env   # API 키 설정
 | CoinGecko | 코인 가격 | 무료 (키 없음, 365일 이내 데이터) |
 | yfinance | 주가·ETF·환율·원자재 | 무료 (키 없음) |
 | KRX (data.krx.co.kr) | 공매도·투자자별 수급 (데드캣·상승추세 분석) | 무료 회원가입 필요 (`KRX_ID`, `KRX_PW`). 미설정 시 주가·거래량 분석만 제공 |
+| KRX Open API | 공식 경로 (전종목 일별 시세 등) | https://openapi.krx.co.kr 에서 신청 (`KRX_OPENAPI_KEY`) |
+
+### KRX 데이터 경로 (혼합)
+
+| 데이터 | 경로 |
+|---|---|
+| 유가증권 시세·종목명 | Open API (`KRX_OPENAPI_KEY`) — 전 영업일까지, 수정주가로 환산. 처리 못 하면(코스닥 등) pykrx |
+| 투자자별 수급, 외국인 지분율, 공매도 | pykrx (`KRX_ID`/`KRX_PW`, 없으면 해당 기능만 비활성) |
+| PER/EPS, KOSPI200 구성종목 | pykrx |
+
+Open API는 "유가증권 일별매매정보"와 "유가증권 종목기본정보" 서비스의 이용 승인이 필요합니다. `run_daily.py`가 최근 400일 시세를 `data/krx_cache/openapi/`에 미리 받아 두며, 첫 실행은 약 8~10분 걸립니다.
+
+### KRX 호출 안전장치 (pykrx 경로)
+
+KRX는 자동화 수단의 비정상 대량 조회를 감지하면 해당 IP를 1일간 차단합니다(이용약관 제10조 제2호). 구체적인 횟수 기준은 공개되어 있지 않아 `providers/krx_provider.py`가 모든 호출에 다음을 적용합니다.
+
+- **호출 간격**: 호출 사이 최소 1.5초 + 0~0.5초 무작위 지연 (`KRX_MIN_INTERVAL`)
+- **증분 캐시**: 종목별 시계열을 `data/krx_cache/`에 저장하고 없는 구간만 요청, 하루 호출 상한 1500회 (`KRX_MAX_CALLS_PER_DAY`)
+- **로그인 1회**: pykrx를 첫 호출 때 지연 import — 프로세스당 로그인 1번, 실패 시 재시도 안 함
+- **차단 감지 시 중단**: JSON이 아닌 응답/403/429를 받으면 `data/krx_block.json`에 기록하고 25시간 동안 KRX에 접속하지 않고 캐시만 사용 (해제가 확실하면 그 파일 삭제)
 
 `KRX_ID`/`KRX_PW`가 설정은 되어 있지만 값이 틀린 경우, `krx_provider.check_krx_login()`이
 실제 로그인을 시도해 성공 여부를 확인합니다. 로그인 실패 시 두 분석 페이지 상단에

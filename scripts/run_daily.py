@@ -37,6 +37,7 @@ from stockindex.core.collector import collect_all
 from stockindex.core.alerts import run_alerts
 from stockindex.core.screener import screen_kospi200, screen_ownership_kospi200
 from stockindex.notify.mailer import send_alert, send_flow_screen_digest
+from stockindex.providers import krx_openapi
 from stockindex.providers.portfolio_provider import PortfolioProvider
 from stockindex.storage import db as _db
 
@@ -83,11 +84,18 @@ def main():
     elif triggered and args.dry_run:
         print("[dry-run] Skipping email send")
 
+    # KRX Open API 일별 시세 캐시 채우기 (대시보드 첫 조회 대기 제거)
+    if krx_openapi.available():
+        n = krx_openapi.warm_cache()
+        print(f"\n[krx-openapi] 시세 캐시 갱신: 새로 받은 거래일 {n}일")
+
     # 5. KOSPI200 investor flow screener (외국인·기관 동반매수/매도 연속일수)
     screener_cfg = settings.screener
     run = screen_kospi200(min_days=screener_cfg.min_days)
     _db.init_db(db_path)
     _db.save_screen_run(db_path, today, run.universe_size, run.is_full_kospi200)
+    if run.aborted:
+        print(f"\n[screener] ⚠️ KRX 조회 중단 — {run.aborted}")
     if not run.is_full_kospi200 and run.universe_size:
         print(f"\n[screener] ⚠️ KOSPI200 정식 API 조회 실패 — 대형주 근사 리스트({run.universe_size}종목)로 대체")
     if run.results:
@@ -110,6 +118,8 @@ def main():
         spike_min_daily_change=screener_cfg.ownership_spike_min_daily_change_pct,
     )
     _db.save_ownership_screen_run(db_path, today, own_run.universe_size, own_run.is_full_kospi200)
+    if own_run.aborted:
+        print(f"\n[ownership] ⚠️ KRX 조회 중단 — {own_run.aborted}")
     if not own_run.is_full_kospi200 and own_run.universe_size:
         print(f"\n[ownership] ⚠️ KOSPI200 정식 API 조회 실패 — 대형주 근사 리스트({own_run.universe_size}종목)로 대체")
     if own_run.results:

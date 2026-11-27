@@ -24,8 +24,9 @@ import time
 import pandas as pd
 from stockindex.providers import krx_provider as krx
 
-# `krx.get_kospi200_tickers()`(pykrx get_index_portfolio_deposit_file)가 KRX API 변경으로
-# 현재 항상 빈 결과를 반환한다(2026-08 확인). 완전히 죽는 대신, deadcat_view.PRESET_TICKERS와
+# `krx.get_kospi200_tickers()`(pykrx get_index_portfolio_deposit_file)는 pykrx 1.2.x에서 인자 순서가
+# (ticker, date)로 바뀌었는데 예전 순서로 호출하면 항상 빈 결과를 반환한다(2026-11 원인 확인·수정).
+# 그래도 KRX 장애 등으로 조회가 실패할 수 있으니 완전히 죽는 대신, deadcat_view.PRESET_TICKERS와
 # 같은 방식으로 KOSPI 대형주 근사 리스트로 폴백한다 — 정식 KOSPI200 전종목이 아님을
 # 호출부(run_daily 로그, 대시보드 캡션)에서 반드시 알려야 한다.
 FALLBACK_TICKERS = {
@@ -50,6 +51,7 @@ class ScreenRun:
     results: list["FlowScreenResult"]
     is_full_kospi200: bool
     universe_size: int
+    aborted: str | None = None     # KRX 차단·호출 상한 등으로 중간에 멈췄다면 그 사유(결과는 그때까지 스캔한 종목분)
 
 
 @dataclass
@@ -95,7 +97,7 @@ def screen_kospi200(
     min_days: int = 3,
     lookback_days: int = 30,
     tickers: dict[str, str] | None = None,
-    sleep_seconds: float = 0.2,
+    sleep_seconds: float = 0.0,
     on_progress: Callable[[int, int, str], None] | None = None,
 ) -> ScreenRun:
     """KOSPI200 전 종목을 순회하며 수급 연속일수를 계산, `min_days` 이상인 종목만 반환.
@@ -103,8 +105,8 @@ def screen_kospi200(
     Args:
         tickers: 생략 시 `get_universe()`로 조회(KOSPI200 API 실패 시 `FALLBACK_TICKERS`).
                  테스트 시 직접 {ticker: name} dict를 주입할 수 있다.
-        sleep_seconds: 종목 사이 호출 간격 — KRX 서버 부하를 줄이기 위한 최소한의 배려.
-                       200종목 순회라 0.2초만 둬도 전체 실행에 40초 이상 걸린다.
+        sleep_seconds: 종목 사이 추가 대기. KRX 호출 간격은 `krx_provider`가 모든 호출에 이미
+                       강제(`KRX_MIN_INTERVAL`, 기본 1.5초+지터)하므로 보통 0으로 둔다.
         on_progress: 종목 하나 처리할 때마다 `(done, total, ticker_name)`으로 호출되는 콜백.
                      대시보드에서 진행률 표시줄을 그리는 용도(cron 실행 시엔 생략).
 
@@ -125,11 +127,15 @@ def screen_kospi200(
     if not universe:
         return ScreenRun(results=[], is_full_kospi200=is_full, universe_size=0)
 
+    aborted: str | None = None
     results: list[FlowScreenResult] = []
     total = len(universe)
     for i, (ticker, name) in enumerate(universe.items(), start=1):
         if on_progress:
             on_progress(i, total, name)
+        aborted = krx.stop_reason()
+        if aborted:       # 차단/호출 상한/로그인 실패 — 남은 종목을 계속 두드리지 않고 그때까지의 결과만 돌려준다
+            break
         investor = krx.get_investor_trading(ticker, start, end)
         twin_buy, twin_sell, foreign_only_buy = compute_streaks(investor)
         if max(twin_buy, twin_sell, foreign_only_buy) < min_days:
@@ -152,7 +158,8 @@ def screen_kospi200(
             time.sleep(sleep_seconds)
 
     results.sort(key=lambda r: r.twin_buy_streak, reverse=True)
-    return ScreenRun(results=results, is_full_kospi200=is_full, universe_size=len(universe))
+    return ScreenRun(results=results, is_full_kospi200=is_full, universe_size=len(universe),
+                     aborted=aborted or krx.stop_reason())
 
 
 # ── 외국인 지분율(보유 비중) 스크리너 ────────────────────────────────────────
@@ -214,7 +221,7 @@ def screen_ownership_kospi200(
     steady_min_up_ratio: float = 0.6,
     spike_min_daily_change: float = 0.3,
     tickers: dict[str, str] | None = None,
-    sleep_seconds: float = 0.2,
+    sleep_seconds: float = 0.0,
     on_progress: Callable[[int, int, str], None] | None = None,
 ) -> ScreenRun:
     """KOSPI200 전 종목을 순회하며 외국인 지분율 변화를 계산해, 지속 증가/일시 급증 종목만 반환.
@@ -235,11 +242,15 @@ def screen_ownership_kospi200(
     if not universe:
         return ScreenRun(results=[], is_full_kospi200=is_full, universe_size=0)
 
+    aborted: str | None = None
     results: list[OwnershipScreenResult] = []
     total = len(universe)
     for i, (ticker, name) in enumerate(universe.items(), start=1):
         if on_progress:
             on_progress(i, total, name)
+        aborted = krx.stop_reason()
+        if aborted:       # 차단/호출 상한/로그인 실패 — 남은 종목을 계속 두드리지 않고 그때까지의 결과만 돌려준다
+            break
         ownership = krx.get_foreign_ownership(ticker, start, end)
         change_total, up_ratio, max_jump, is_steady, is_spike = compute_ownership_signal(
             ownership, steady_min_change, steady_min_up_ratio, spike_min_daily_change,
@@ -266,4 +277,5 @@ def screen_ownership_kospi200(
             time.sleep(sleep_seconds)
 
     results.sort(key=lambda r: r.change_pct_points, reverse=True)
-    return ScreenRun(results=results, is_full_kospi200=is_full, universe_size=len(universe))
+    return ScreenRun(results=results, is_full_kospi200=is_full, universe_size=len(universe),
+                     aborted=aborted or krx.stop_reason())

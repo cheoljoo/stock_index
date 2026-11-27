@@ -31,6 +31,10 @@ from pathlib import Path
 # Ensure src is on path when run via `streamlit run`
 sys.path.insert(0, str(Path(__file__).parents[3]))
 
+from dotenv import load_dotenv
+# `make dashboard`로 띄워도 API 키가 보이도록 .env를 읽는다 (이미 설정된 환경변수는 덮어쓰지 않음)
+load_dotenv(Path(__file__).parents[3] / ".env")
+
 import streamlit as st
 import pandas as pd
 from datetime import date, timedelta
