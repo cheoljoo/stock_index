@@ -20,9 +20,15 @@ def _load_yaml(path: Path) -> dict:
 
 
 def load_settings(path: Path | None = None) -> Settings:
-    """`settings.yaml` (SMTP, 저장 경로, 수집 주기 등 전역 설정)을 로드한다."""
+    """`settings.yaml` (SMTP, 저장 경로, 수집 주기 등 전역 설정)을 로드한다.
+
+    메일의 대시보드 링크는 서버마다 다르므로 환경변수 `STOCK_INDEX_SITE_URL`이 있으면 `site_url` 대신 쓴다.
+    """
     p = path or (_BASE / "settings.yaml")
-    return Settings.model_validate(_load_yaml(p))
+    raw = _load_yaml(p)
+    if os.environ.get("STOCK_INDEX_SITE_URL"):
+        raw["site_url"] = os.environ["STOCK_INDEX_SITE_URL"]
+    return Settings.model_validate(raw)
 
 
 def load_indicators(path: Path | None = None) -> dict[str, IndicatorConfig]:

@@ -103,7 +103,7 @@ def main():
 
     st.sidebar.caption("데이터 소스: yfinance · FRED · CoinGecko · 한국은행 ECOS")
     st.sidebar.markdown("---")
-    st.sidebar.markdown("[🏠 홈으로](http://psncs.iptime.org/)")
+    st.sidebar.markdown("[🏠 홈으로](/)")
 
     # ── Load data ────────────────────────────────────────────
     series_map = _load_data(start, end)

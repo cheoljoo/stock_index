@@ -93,6 +93,18 @@ def _screen_diff(db_path: str, runs_table: str, rows_table: str) -> dict | None:
     }
 
 
+def _problem_lines(log_text: str) -> list[str]:
+    """로그에서 확인이 필요한 줄. 수집 결과 줄에는 지표 이름이 없으므로 바로 앞 지표를 붙인다."""
+    found, key = [], None
+    for line in (ln.strip() for ln in log_text.splitlines()):
+        m = re.match(r"\[collector\] fetching (\S+)", line)
+        if m:
+            key = m.group(1)
+        elif _PROBLEM.search(line):
+            found.append(f"{key}: {line}" if key and line.startswith("->") else line)
+    return list(dict.fromkeys(found))[:30]
+
+
 def _git(*args: str) -> str:
     try:
         return subprocess.run(["git", "-C", str(_ROOT), *args], capture_output=True, text=True,
@@ -134,7 +146,6 @@ def build_context(log_text: str, ok: bool, elapsed: float | None) -> dict:
     old_head = previous.get("head")
     commits = _git("log", "--oneline", f"{old_head}..HEAD") if old_head else _git("log", "--oneline", "-3")
     cache = _ROOT / "data" / "krx_cache"
-    problems = [ln.strip() for ln in log_text.splitlines() if _PROBLEM.search(ln)]
     return {
         "ok": ok,
         "now": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -146,7 +157,7 @@ def build_context(log_text: str, ok: bool, elapsed: float | None) -> dict:
             (date.today().isoformat(),))],
         "flow": flow,
         "own": own,
-        "problems": list(dict.fromkeys(problems))[:30],
+        "problems": _problem_lines(log_text),
         "krx_calls": _calls(cache / "calls_today.json"),
         "openapi_calls": _calls(cache / "openapi" / "calls_today.json"),
         "krx_stop": krx_provider.stop_reason() or (None if krx_openapi.available() else "Open API 사용 불가"),

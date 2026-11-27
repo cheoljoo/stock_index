@@ -33,3 +33,16 @@ def test_render_has_dark_and_light_theme_and_escapes():
     html = report.render_html(ctx)
     assert "prefers-color-scheme: dark" in html and 'content="light dark"' in html
     assert "실패" in html and "&lt;boom&gt;" in html
+
+
+def test_problem_lines_name_the_indicator():
+    log = """[collector] fetching gold (GC=F) via yfinance...
+  -> 12 rows, latest=1.0
+[collector] fetching nps_portfolio (nps) via portfolio...
+  -> empty (no data returned)
+[mailer] SMTP password env 'SMTP_PASSWORD' not set — skipping mail
+"""
+    assert report._problem_lines(log) == [
+        "nps_portfolio: -> empty (no data returned)",
+        "[mailer] SMTP password env 'SMTP_PASSWORD' not set — skipping mail",
+    ]
