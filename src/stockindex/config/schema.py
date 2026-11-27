@@ -88,6 +88,12 @@ class ScreenerConfig(BaseModel):
     ownership_spike_min_daily_change_pct: float = 0.3  # 일시 급증으로 볼 최소 하루 변화폭(%p)
 
 
+class ReportConfig(BaseModel):
+    """`run_daily.py` 실행 결과 메일(`notify/report.py`). 로그가 첨부되므로 수신자는 본인만 두는 것을 권장."""
+    enabled: bool = True
+    to: list[str] = []
+
+
 class Settings(BaseModel):
     site_url: str = "http://localhost:8501"
     storage: StorageConfig = StorageConfig()
@@ -96,3 +102,4 @@ class Settings(BaseModel):
     collect: CollectConfig = CollectConfig()
     alert: AlertConfig = AlertConfig()
     screener: ScreenerConfig = ScreenerConfig()
+    report: ReportConfig = ReportConfig()

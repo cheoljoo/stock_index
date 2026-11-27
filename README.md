@@ -120,6 +120,15 @@ cp .env.example .env   # API 키 설정
 | KRX (data.krx.co.kr) | 공매도·투자자별 수급 (데드캣·상승추세 분석) | 무료 회원가입 필요 (`KRX_ID`, `KRX_PW`). 미설정 시 주가·거래량 분석만 제공 |
 | KRX Open API | 공식 경로 (전종목 일별 시세 등) | https://openapi.krx.co.kr 에서 신청 (`KRX_OPENAPI_KEY`) |
 
+### 일일 결과 메일
+
+`run_daily.py`는 실행이 끝나면(실패해도) `config/settings.yaml`의 `report.to`로 HTML 요약 메일을 보내고 이번 실행 로그를 첨부합니다. 지표 등락, 스크리너의 신규·이탈 종목, 오늘 알림, 커밋 변경을 담으며 다크/라이트 테마를 따릅니다. `.env`의 비밀값은 `***`로 가립니다.
+
+```bash
+python scripts/run_daily.py --report-only            # 수집 없이 마지막 실행 결과를 다시 보내기
+python scripts/run_daily.py --report-only --dry-run  # logs/last_report.html 만 만들기
+```
+
 ### KRX 데이터 경로 (혼합)
 
 | 데이터 | 경로 |

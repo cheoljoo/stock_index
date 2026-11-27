@@ -30,6 +30,22 @@ def render_flow_screen_html(results: list, min_days: int, site_url: str) -> str:
     return tmpl.render(results=results, min_days=min_days, site_url=site_url)
 
 
+def smtp_password(smtp_cfg) -> str:
+    """설정된 환경변수의 비밀번호. 비어 있고 같은 계정의 Gmail 앱 비밀번호(GMAIL_APP_PASSWORD)가 있으면 그것을 쓴다."""
+    password = os.environ.get(smtp_cfg.password_env, "")
+    if not password and os.environ.get("GMAIL_SENDER", "") == smtp_cfg.user:
+        password = os.environ.get("GMAIL_APP_PASSWORD", "")
+    return password
+
+
+def deliver(smtp_cfg, password: str, recipients, msg) -> None:
+    with smtplib.SMTP(smtp_cfg.host, smtp_cfg.port, timeout=60) as server:
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_cfg.user, password)
+        server.sendmail(smtp_cfg.from_, list(recipients), msg.as_string())
+
+
 def _send_html_mail(subject: str, html: str, recipients: set[str]) -> None:
     """공통 SMTP 발송 경로. `SMTP_PASSWORD` 미설정 시 발송 없이 수신자만 출력한다."""
     if not recipients:
@@ -37,7 +53,7 @@ def _send_html_mail(subject: str, html: str, recipients: set[str]) -> None:
     settings = load_settings()
     smtp_cfg = settings.smtp
 
-    password = os.environ.get(smtp_cfg.password_env, "")
+    password = smtp_password(smtp_cfg)
     if not password:
         print(f"[mailer] SMTP password env '{smtp_cfg.password_env}' not set — skipping mail")
         print(f"[mailer] Would send to: {recipients}")
@@ -49,11 +65,7 @@ def _send_html_mail(subject: str, html: str, recipients: set[str]) -> None:
     msg["To"] = ", ".join(sorted(recipients))
     msg.attach(MIMEText(html, "html", "utf-8"))
 
-    with smtplib.SMTP(smtp_cfg.host, smtp_cfg.port) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(smtp_cfg.user, password)
-        server.sendmail(smtp_cfg.from_, list(recipients), msg.as_string())
+    deliver(smtp_cfg, password, recipients, msg)
     print(f"[mailer] Sent mail to {recipients}")
 
 

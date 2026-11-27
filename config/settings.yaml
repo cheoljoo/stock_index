@@ -26,3 +26,7 @@ screener:
   ownership_steady_min_change_pct: 0.5      # 30일간 지분율 +0.5%p 이상 & 상승일 비율 충족 시 "지속 증가"
   ownership_steady_min_up_ratio: 0.6
   ownership_spike_min_daily_change_pct: 0.3 # 하루 지분율 +0.3%p 이상이면 "일시 급증"
+# 매일 run_daily 실행 결과를 HTML 메일(전체 로그 첨부)로 보낸다
+report:
+  enabled: true
+  to: ["cheoljoo@gmail.com"]

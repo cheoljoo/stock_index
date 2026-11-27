@@ -23,35 +23,103 @@ flowchart TD
 ```
 """
 from __future__ import annotations
+import io
 import sys
+import time
+import traceback
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parents[1] / ".env")
 
-from datetime import date
+from datetime import date, datetime, timedelta
 import argparse
 from stockindex.config.loader import load_settings, load_thresholds
 from stockindex.core.collector import collect_all
 from stockindex.core.alerts import run_alerts
 from stockindex.core.screener import screen_kospi200, screen_ownership_kospi200
 from stockindex.notify.mailer import send_alert, send_flow_screen_digest
+from stockindex.notify.report import send_report
 from stockindex.providers import krx_openapi
 from stockindex.providers.portfolio_provider import PortfolioProvider
 from stockindex.storage import db as _db
 
 
+class _Tee(io.TextIOBase):
+    """출력을 원래 스트림(cron 의 collect.log)과 이번 실행 전용 로그 파일에 같이 쓴다."""
+    def __init__(self, stream, copy):
+        self.stream, self.copy = stream, copy
+
+    def write(self, text):
+        self.stream.write(text)
+        self.copy.write(text)
+        self.flush()
+        return len(text)
+
+    def flush(self):
+        self.stream.flush()
+        self.copy.flush()
+
+
+def _last_run_log() -> str:
+    """collect.log 에서 마지막 실행분만 잘라낸다 (--report-only 용)."""
+    path = Path(__file__).parents[1] / "logs" / "collect.log"
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    i = text.rfind("=== run_daily ")
+    return text[i:] if i >= 0 else text
+
+
 def main():
-    """일일 파이프라인 진입점: 수집 → 포트폴리오 스냅샷 → 임계치 평가 → 메일 발송.
+    """일일 파이프라인 진입점: 수집 → 평가 → 스크리너 → 결과 메일.
 
     `--keys`로 특정 지표만 수집하거나(디버깅용), `--dry-run`으로 메일 발송만 건너뛸 수 있다.
+    `--report-only`는 수집 없이 마지막 실행 결과로 보고 메일만 다시 보낸다.
+    실행이 실패해도 보고 메일은 보낸다.
     """
     parser = argparse.ArgumentParser(description="Daily stock index collection & alerts")
     parser.add_argument("--keys", nargs="*", help="Specific indicator keys to collect (default: all)")
     parser.add_argument("--dry-run", action="store_true", help="Collect but skip sending email")
+    parser.add_argument("--report-only", action="store_true", help="Send the report for the last run without collecting")
     args = parser.parse_args()
 
+    if args.report_only:
+        log_text = _last_run_log()
+        ok = "=== Done ===" in log_text
+        print(f"[report] {send_report(log_text, ok=ok, send=not args.dry_run)}")
+        return
+
+    run_dir = Path(__file__).parents[1] / "logs" / "runs"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    for old in run_dir.glob("run_daily_*.log"):
+        if datetime.fromtimestamp(old.stat().st_mtime) < datetime.now() - timedelta(days=30):
+            old.unlink()
+    log_path = run_dir / f"run_daily_{datetime.now():%Y%m%d_%H%M%S}.log"
+
+    started, ok = time.time(), False
+    original = sys.stdout, sys.stderr
+    with log_path.open("w", encoding="utf-8") as log_file:
+        sys.stdout, sys.stderr = _Tee(original[0], log_file), _Tee(original[1], log_file)
+        try:
+            _pipeline(args)
+            ok = True
+        except BaseException:
+            log_file.write(traceback.format_exc())
+            log_file.flush()
+            raise
+        finally:
+            try:
+                send_report(log_path.read_text(encoding="utf-8"), ok=ok,
+                            elapsed=time.time() - started, send=not args.dry_run)
+            except Exception as e:          # 보고 실패가 수집 결과에 영향을 주면 안 된다
+                print(f"[report] ⚠️ 결과 메일 실패: {type(e).__name__}: {e}")
+            finally:
+                sys.stdout, sys.stderr = original
+
+
+def _pipeline(args):
     settings = load_settings()
     db_path = settings.storage.db_path
     today = date.today()

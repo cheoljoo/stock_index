@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<style>
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
+  body { margin:0; padding:16px; background:#f4f5f7; color:#1f2328; font-family:-apple-system,'Segoe UI','Noto Sans KR',sans-serif; font-size:14px; }
+  .wrap { max-width:720px; margin:0 auto; }
+  .card { background:#ffffff; border:1px solid #d8dde3; border-radius:8px; padding:14px 16px; margin-bottom:12px; }
+  h1 { font-size:19px; margin:0 0 4px; } h2 { font-size:15px; margin:0 0 8px; }
+  .muted { color:#656d76; font-size:12px; }
+  table { border-collapse:collapse; width:100%; }
+  th, td { text-align:right; padding:4px 6px; border-bottom:1px solid #e6e9ed; font-size:13px; }
+  th:first-child, td:first-child { text-align:left; }
+  .up { color:#c62828; } .down { color:#1565c0; }
+  .ok { color:#1a7f37; } .bad { color:#cf222e; }
+  .badge { background:#fff3c4; color:#6b4e00; border-radius:4px; padding:0 4px; font-size:11px; }
+  pre { white-space:pre-wrap; word-break:break-all; background:#f4f5f7; padding:8px; border-radius:6px; font-size:12px; margin:0; }
+  a { color:#0969da; }
+  @media (prefers-color-scheme: dark) {
+    body { background:#0d1117 !important; color:#e6edf3 !important; }
+    .card { background:#161b22 !important; border-color:#30363d !important; }
+    .muted { color:#8b949e !important; }
+    th, td { border-bottom-color:#262c36 !important; }
+    .up { color:#ff7b72 !important; } .down { color:#79c0ff !important; }
+    .ok { color:#56d364 !important; } .bad { color:#ff7b72 !important; }
+    .badge { background:#4d3800 !important; color:#ffdf80 !important; }
+    pre { background:#0d1117 !important; }
+    a { color:#58a6ff !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>stock_index 일일 수집 <span class="{{ 'ok' if ok else 'bad' }}">{{ '성공' if ok else '실패' }}</span></h1>
+    <div class="muted">{{ now }} · {{ host }}{% if elapsed_min is not none %} · {{ elapsed_min }}분 소요{% endif %}</div>
+    <div class="muted">KRX 호출 {{ krx_calls }}회 · Open API {{ openapi_calls }}회{% if krx_stop %} · <span class="bad">{{ krx_stop }}</span>{% endif %}</div>
+    {% if site_url %}<div><a href="{{ site_url }}">대시보드 열기</a></div>{% endif %}
+  </div>
+
+  {% if problems %}
+  <div class="card"><h2 class="bad">확인이 필요한 로그 {{ problems|length }}줄</h2><pre>{{ problems|join('\n') }}</pre></div>
+  {% endif %}
+
+  <div class="card">
+    <h2>임계치 알림 (오늘 {{ alerts|length }}건)</h2>
+    {% if alerts %}<table><tr><th>지표</th><th>단계</th><th>값</th></tr>
+      {% for a in alerts %}<tr><td>{{ a.indicator }}</td><td>{{ a.level }}</td><td>{{ '{:,.4f}'.format(a.value) }}</td></tr>{% endfor %}
+    </table>{% else %}<div class="muted">없음</div>{% endif %}
+  </div>
+
+  {% if flow %}
+  <div class="card">
+    <h2>외국인·기관 수급 스크리너: {{ flow.count }}종목{% if flow.prev_date %} (이전 {{ flow.prev_count }}){% endif %}</h2>
+    <div class="muted">{{ flow.date }} · 대상 {{ flow.universe }}종목{% if not flow.full %} (KOSPI200 전체 아님){% endif %}{% if flow.prev_date %} · 비교 기준 {{ flow.prev_date }}{% endif %}</div>
+    <div>신규 {{ flow.added|length }}: {{ flow.added|map(attribute='name')|join(', ') or '없음' }}</div>
+    <div>이탈 {{ flow.removed|length }}: {{ flow.removed|map(attribute='name')|join(', ') or '없음' }}</div>
+    {% if flow.rows %}<table><tr><th>종목</th><th>동반매수</th><th>동반매도</th><th>외국인단독</th><th>종가</th></tr>
+      {% for r in flow.rows[:15] %}<tr><td>{{ r.name }}</td><td>{{ r.twin_buy_streak }}일</td><td>{{ r.twin_sell_streak }}일</td><td>{{ r.foreign_only_buy_streak }}일</td><td>{{ '{:,.0f}'.format(r.latest_close) if r.latest_close else '-' }}</td></tr>{% endfor %}
+    </table>{% endif %}
+  </div>
+  {% endif %}
+
+  {% if own %}
+  <div class="card">
+    <h2>외국인 지분율 스크리너: {{ own.count }}종목{% if own.prev_date %} (이전 {{ own.prev_count }}){% endif %}</h2>
+    <div class="muted">{{ own.date }} · 대상 {{ own.universe }}종목{% if own.prev_date %} · 비교 기준 {{ own.prev_date }}{% endif %}</div>
+    <div>신규 {{ own.added|length }}: {{ own.added[:30]|map(attribute='name')|join(', ') or '없음' }}{% if own.added|length > 30 %} 외{% endif %}</div>
+    <div>이탈 {{ own.removed|length }}: {{ own.removed[:30]|map(attribute='name')|join(', ') or '없음' }}{% if own.removed|length > 30 %} 외{% endif %}</div>
+    {% if own.rows %}<table><tr><th>종목 (변화 상위)</th><th>지분율</th><th>변화(%p)</th><th>구분</th></tr>
+      {% for r in own.rows[:15] %}<tr><td>{{ r.name }}</td><td>{{ '%.2f'|format(r.latest_ratio) }}%</td><td class="{{ 'up' if r.change_pct_points > 0 else 'down' }}">{{ '%+.2f'|format(r.change_pct_points) }}</td><td>{{ '지속증가' if r.is_steady_increase else '급증' }}</td></tr>{% endfor %}
+    </table>{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h2>지표 {{ indicators|length }}개 (직전 관측 대비, 변화 큰 순)</h2>
+    <table><tr><th>지표</th><th>기준일</th><th>값</th><th>등락</th></tr>
+      {% for r in indicators %}<tr><td>{{ r.name }}{% if r.is_new %} <span class="badge">새 데이터</span>{% endif %}</td><td>{{ r.date }}</td><td>{{ '{:,.2f}'.format(r.value) }}</td>
+        <td class="{{ 'up' if (r.pct or 0) > 0 else ('down' if (r.pct or 0) < 0 else 'muted') }}">{{ '%+.2f%%'|format(r.pct) if r.pct is not none else '-' }}</td></tr>{% endfor %}
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>코드 변경</h2>
+    <div class="muted">현재 {{ head }} · 지난 보고 이후 커밋{% if not commits %} 없음{% endif %}</div>
+    {% if commits %}<pre>{{ commits|join('\n') }}</pre>{% endif %}
+    {% if dirty %}<div class="muted">커밋하지 않은 변경 (cron 은 작업 디렉터리를 그대로 실행)</div><pre>{{ dirty|join('\n') }}</pre>{% endif %}
+  </div>
+  <div class="muted">전체 실행 로그는 첨부 파일을 보세요.</div>
+</div>
+</body>
+</html>
