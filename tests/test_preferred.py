@@ -38,6 +38,18 @@ def test_window_is_calendar_years_and_no_lookahead():
     assert b["q25"].iloc[:249].isna().all() and b["q75"].iloc[300] <= b["ratio"].iloc[300]
 
 
+def test_day_missing_from_response_is_kept(tmp_path, monkeypatch):
+    monkeypatch.setattr(pref, "_CACHE", tmp_path / "p.parquet")
+    idx = pd.bdate_range("2020-01-01", periods=400)
+    def fake(days):
+        return lambda t, p: pd.DataFrame({f"{p}_open": 100.0, f"{p}_close": 100.0, f"{p}_div": 0.0}, index=days)
+    monkeypatch.setattr(pref, "_download", fake(idx))
+    pref.refresh()
+    monkeypatch.setattr(pref, "_download", fake(idx[:-1]))
+    assert pref.refresh().index[-1] == idx[-1]
+    assert len(pref.load_cached()) == 400
+
+
 def test_bad_download_keeps_cache(tmp_path, monkeypatch):
     monkeypatch.setattr(pref, "_CACHE", tmp_path / "p.parquet")
     idx = pd.bdate_range("2020-01-01", periods=400)

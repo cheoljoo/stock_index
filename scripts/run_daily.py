@@ -13,15 +13,15 @@ flowchart TD
         S1["1. collect_all() — 전 지표 수집 → Parquet/SQLite 저장"]
         S2["2. (1에 포함) 국민연금 자산배분을 공식 자료에서 받아 저장"]
         S3["3. run_alerts() — thresholds.yaml 평가, 신규 도달만 필터"]
-        S4["4. send_alert() — 도달 항목 있으면 HTML 메일 발송"]
-        S5["5. screen_kospi200() — 외국인·기관 동반매수/매도 연속일수 스캔 → 저장 + 다이제스트 메일"]
+        S4["4. 알림은 결과 메일 한 통에 포함 (report가 꺼져 있을 때만 send_alert)"]
+        S5["5. screen_kospi200() — 외국인·기관 동반매수/매도 연속일수 스캔 → 저장"]
         S6["6. screen_ownership_kospi200() — 외국인 지분율 지속증가/일시급증 스캔 → 저장"]
         S7["7. foreign_flow — 외국인 매수/매도 시작 판정 (KOSPI 전체 + 캐시된 KOSPI200)"]
         S8["8. preferred — 삼성전자 보통주·우선주 가격·배당 갱신"]
         S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8
     end
     main --> Dash["대시보드(app.py)가 다음 조회 시 새 데이터 표시"]
-    main --> Mail["수신자 메일함 (도달 시에만)"]
+    main --> Mail["결과 메일 1통 (report.to)"]
 ```
 """
 from __future__ import annotations
@@ -38,7 +38,7 @@ load_dotenv(Path(__file__).parents[1] / ".env")
 from datetime import date, datetime, timedelta
 import argparse
 from stockindex.config.loader import load_settings, load_thresholds
-from stockindex.core.collector import collect_all
+from stockindex.core.collector import collect_all, load_all_series
 from stockindex.core import foreign_flow, preferred
 from stockindex.core.alerts import run_alerts
 from stockindex.core.screener import screen_kospi200, screen_ownership_kospi200
@@ -137,16 +137,19 @@ def _pipeline(args):
     # 3. Alert evaluation
     recipients, thresholds_cfg = load_thresholds()
     suppress = settings.alert.suppress_duplicate_days
-    triggered = run_alerts(series_map, recipients, thresholds_cfg, db_path, today, suppress)
+    # 추세 조건에는 여러 날이 필요하다. 하루치만 주는 지표가 있어 저장해 둔 전체 시계열로 평가한다
+    history = load_all_series(keys=list(series_map)) if series_map else {}
+    triggered = run_alerts(history, recipients, thresholds_cfg, db_path, today, suppress)
     print(f"\n[alerts] {len(triggered)} threshold(s) triggered")
     for item in triggered:
         print(f"  {item['indicator']} [{item['level']}] = {item['value']:.4f}")
 
-    # 4. Send mail
-    if triggered and not args.dry_run:
-        send_alert(triggered)
-    elif triggered and args.dry_run:
+    # 4. Send mail — 결과 메일(report)이 켜져 있으면 알림·수급도 거기에 담기므로 따로 보내지 않는다
+    separate_mail = not (settings.report.enabled and settings.report.to)
+    if triggered and args.dry_run:
         print("[dry-run] Skipping email send")
+    elif triggered and separate_mail:
+        send_alert(triggered)
 
     # KRX Open API 일별 시세 캐시 채우기 (대시보드 첫 조회 대기 제거)
     if krx_openapi.available():
@@ -165,7 +168,7 @@ def _pipeline(args):
     if run.results:
         _db.save_investor_flow_screen(db_path, today, run.results)
         print(f"[screener] {len(run.results)}/{run.universe_size} stock(s) with >= {screener_cfg.min_days}d streak")
-        if not args.dry_run:
+        if separate_mail and not args.dry_run:
             recipients, _ = load_thresholds()
             send_flow_screen_digest(
                 run.results, screener_cfg.notify_min_days,

@@ -155,7 +155,8 @@ def build_context(log_text: str, ok: bool, elapsed: float | None) -> dict:
     flow = _screen_diff(db, "screen_runs", "investor_flow_screen")
     if flow:
         for key in ("rows", "added", "removed"):
-            flow[key].sort(key=lambda r: (r["twin_buy_streak"], r["foreign_only_buy_streak"]), reverse=True)
+            flow[key].sort(key=lambda r: max(r["twin_buy_streak"], r["twin_sell_streak"], r["foreign_only_buy_streak"]),
+                           reverse=True)
     own = _screen_diff(db, "ownership_screen_runs", "ownership_screen")
     if own:
         for key in ("rows", "added", "removed"):

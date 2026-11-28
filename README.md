@@ -124,7 +124,7 @@ cp .env.example .env   # API 키 설정
 
 ### 일일 결과 메일
 
-`run_daily.py`는 실행이 끝나면(실패해도) `config/settings.yaml`의 `report.to`로 HTML 요약 메일을 보내고 이번 실행 로그를 첨부합니다. 지표 등락, 스크리너의 신규·이탈 종목, 오늘 알림, 커밋 변경을 담으며 다크/라이트 테마를 따릅니다. `.env`의 비밀값은 `***`로 가립니다.
+`run_daily.py`는 실행이 끝나면(실패해도) `config/settings.yaml`의 `report.to`로 HTML 요약 메일을 보내고 이번 실행 로그를 첨부합니다. 지표 등락, 스크리너의 신규·이탈 종목, 오늘 알림, 커밋 변경을 담으며 다크/라이트 테마를 따릅니다. **메일은 이 한 통만 보냅니다** — 임계치 알림·수급 스크리너 개별 메일은 `report.enabled: false`(또는 `report.to` 비움)일 때만 나갑니다. `.env`의 비밀값은 `***`로 가립니다.
 
 ```bash
 python scripts/run_daily.py --report-only            # 수집 없이 마지막 실행 결과를 다시 보내기
@@ -280,7 +280,7 @@ make nginx-install   # sudo 비밀번호 필요
 ### 자동 수집 & 메일 내용을 매일 최신으로 유지하기
 
 **이미 매일 자동으로 갱신되도록 설정되어 있습니다.** crontab에 아래 줄이 등록되어 있고,
-매일 04:00에 `scripts/run_daily.py`가 실행되어 "수집 → 임계치 평가 → (도달 시) 메일 발송"까지
+매일 04:00에 `scripts/run_daily.py`가 실행되어 "수집 → 임계치 평가 → 결과 메일 1통 발송"까지
 전부 자동으로 처리합니다. 즉 **별도 조치 없이도 메일 내용은 매일 최신 데이터를 기준으로 갱신됩니다.**
 
 ```
@@ -298,11 +298,11 @@ tail -f logs/collect.log          # 실제 실행 로그 (매일 04시경 새 �
 - `run_alerts()`는 그날 새로 임계치를 넘은 항목만 골라내고, **SQLite `alert_history`의
   UNIQUE(indicator, level, triggered_date) 제약**으로 같은 날 같은 단계는 중복 발송하지 않습니다.
   (`config/settings.yaml`의 `alert.suppress_duplicate_days`로 재발송 억제 기간 조정 가능)
-- 도달 항목이 하루라도 없으면 그날은 메일이 오지 않는 게 정상입니다(`[alerts] 0 threshold(s) triggered`).
+- 도달 항목이 없는 날에도 결과 메일은 옵니다(알림 0건).
 
 **메일 발송 조건/대상을 바꾸고 싶다면**
 - 어떤 조건에서 메일을 보낼지 → `config/thresholds.yaml`의 `condition`/`notify` 수정
-- 누구에게 보낼지 → `config/thresholds.yaml`의 `recipients` 수정
+- 누구에게 보낼지 → `config/settings.yaml`의 `report.to` 수정 (개별 알림 메일을 쓸 때만 `config/thresholds.yaml`의 `recipients`)
 - 발송 시각을 바꾸고 싶다면 → `crontab -e`로 `0 4 * * *` 부분만 수정 (예: 매일 18시 → `0 18 * * *`)
 - 메일이 아예 안 보내진다면 → `.env`의 `SMTP_PASSWORD`가 비어있는지 확인 (비어있으면 발송을 건너뛰고
   콘솔에 "Would send to: ..."만 출력)

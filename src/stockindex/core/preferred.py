@@ -48,6 +48,9 @@ def refresh() -> pd.DataFrame:
         if moved.any(axis=1).sum() > 5:
             raise ValueError(f"저장해 둔 과거 종가가 {int(moved.any(axis=1).sum())}일 바뀌었습니다 "
                              f"(액면분할이면 {_CACHE} 를 지우고 다시 받으세요)")
+    kept = old.loc[old.index.difference(df.index)]      # 이번 응답에 빠진 날은 저장해 둔 값을 남긴다
+    if len(kept):
+        df = pd.concat([df, kept]).sort_index()
     _CACHE.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(_CACHE)
     return df
